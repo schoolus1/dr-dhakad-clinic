@@ -388,9 +388,37 @@ async function loadPatientBills(pid) {
         <div class="queue-name">${b.bill_number}</div>
         <div class="queue-meta">${b.created_at} &bull; ₹${b.total_amount} &bull; ${b.payment_mode.toUpperCase()}</div>
       </div>
-      <span class="badge badge-${b.status}">${b.status === 'paid' ? 'पेड' : b.status === 'partial' ? 'बकाया' : 'रिफंड'}</span>
-      <button class="btn btn-sm btn-outline" onclick="window.open('/print/bill/${b.id}','_blank')">🖨️</button>
+      <span class="badge badge-${b.status}">${b.status === 'paid' ? 'पेड' : b.status === 'partial' ? 'बकाया' : b.status === 'cancelled' ? 'रद्द' : 'रिफंड'}</span>
+      <div class="d-flex gap-1 align-center">
+        <button class="btn btn-sm btn-outline" onclick="window.open('/print/bill/${b.id}','_blank')" title="प्रिंट">🖨️</button>
+        ${b.status !== 'cancelled' ? `<button class="btn btn-sm btn-danger" onclick="cancelBillPrompt(${b.id}, '${b.bill_number}')" title="रद्द करें (डॉक्टर पिन जरूरी)">❌</button>` : ''}
+      </div>
     </div>`).join('');
+}
+
+async function cancelBillPrompt(bid, billNum) {
+  const reason = prompt(`बिल ${billNum} रद्द करने का कारण लिखें (Reason for cancellation):`);
+  if (!reason) return;
+  const pin = prompt(`डॉक्टर की सुरक्षा पिन दर्ज करें (Doctor Security PIN - Default 1234):`);
+  if (!pin) return;
+
+  try {
+    const resp = await fetch(`/api/bills/${bid}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: reason, doctor_pin: pin })
+    });
+    const res = await resp.json();
+    if (res.success) {
+      toast(`✅ ${res.message}`);
+      if (currentBillPatientId) loadPatientBills(currentBillPatientId);
+      loadTodayReport();
+    } else {
+      toast(res.message || 'बिल रद्द नहीं हुआ', 'error');
+    }
+  } catch (e) {
+    toast('सर्वर त्रुटि', 'error');
+  }
 }
 
 async function createBill() {
@@ -422,8 +450,22 @@ async function createBill() {
       </div>`;
     openModal('billSuccessModal');
     loadPatientBills(currentBillPatientId);
+  } else if (result.is_duplicate) {
+    if (confirm(`⚠️ ${result.message}\n\nक्या आप वाकई इस मरीज के लिए दूसरा नया बिल बनाना चाहते हैं?`)) {
+      data.force_duplicate = true;
+      const retryResp = await fetch('/api/bills', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+      const retryResult = await retryResp.json();
+      if (retryResult.success) {
+        currentBillId = retryResult.bill_id;
+        toast(`✅ बिल ${retryResult.bill_number} बना!`);
+        openModal('billSuccessModal');
+        loadPatientBills(currentBillPatientId);
+      } else {
+        toast(retryResult.message || 'त्रुटि हुई', 'error');
+      }
+    }
   } else {
-    toast('त्रुटि हुई', 'error');
+    toast(result.message || 'त्रुटि हुई', 'error');
   }
 }
 
@@ -439,6 +481,10 @@ async function loadTodayReport() {
   document.getElementById('rep-bills').textContent = data.bills_count;
   document.getElementById('rep-cash').textContent = '₹' + data.cash;
   document.getElementById('rep-upi').textContent = '₹' + data.upi;
+  const cancEl = document.getElementById('rep-cancelled');
+  if (cancEl) {
+    cancEl.textContent = `${data.cancelled_count || 0} (₹${data.cancelled_amount || 0})`;
+  }
 }
 
 async function loadRangeReport() {

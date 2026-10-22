@@ -73,9 +73,14 @@
           <!-- Left: Queue list -->
           <div>
             <div class="card" style="height:calc(100vh - 120px);overflow-y:auto;">
-              <div class="card-header">
-                <span class="card-title">📋 आज की कतार</span>
-                <span id="queueCount" class="badge badge-waiting">0</span>
+              <div class="card-header d-flex justify-between align-center">
+                <div>
+                  <span class="card-title">📋 आज की कतार</span>
+                  <span id="queueCount" class="badge badge-waiting">0</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-primary" onclick="callNextPatient()" style="font-weight:700;" title="कतार से अगला मरीज टीवी पर बुलाएं">
+                  🔔 अगला मरीज (Call Next)
+                </button>
               </div>
               <div id="queueList">
                 <div class="loading"><div class="spinner"></div></div>
@@ -86,7 +91,7 @@
           <div>
             <div id="visitPlaceholder" class="card" style="text-align:center;padding:60px 20px;">
               <div style="font-size:3rem;margin-bottom:12px;">🩺</div>
-              <p style="color:var(--text2);">बाईं ओर से कोई मरीज चुनें</p>
+              <p style="color:var(--text2);">बाईं ओर से कोई मरीज चुनें या <strong>🔔 अगला मरीज (Call Next)</strong> दबाएं</p>
             </div>
             <div id="visitForm" style="display:none;">
               <div class="card mb-2">
@@ -95,9 +100,12 @@
                     <div id="visitPatientName" style="font-size:1.15rem;font-weight:700;"></div>
                     <div id="visitPatientMeta" style="font-size:0.82rem;color:var(--text2);margin-top:2px;"></div>
                   </div>
-                  <div class="d-flex gap-1">
-                    <button class="btn btn-sm btn-outline" onclick="viewHistory()">📂 इतिहास (History)</button>
-                    <button class="btn btn-sm btn-success" onclick="finalizeVisit()">✅ पूर्ण करें (Done)</button>
+                  <div class="d-flex gap-1 align-center">
+                    <button type="button" class="btn btn-sm btn-warning" onclick="ringCurrentPatient()" title="इस मरीज का टोकन टीवी पर दोबारा बजाएं">
+                      🔔 TV घंटी (Ring)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="viewHistory()">📂 इतिहास (History)</button>
+                    <button type="button" class="btn btn-sm btn-success" onclick="finalizeVisit()">✅ पूर्ण करें (Done)</button>
                   </div>
                 </div>
 

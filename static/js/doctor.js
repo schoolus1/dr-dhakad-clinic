@@ -213,10 +213,47 @@ function renderRxTable() {
   `).join('');
 }
 
-// ─── PATIENT CONSULTATION ───
-async function openPatient(apptId, patientId) {
+// ─── PATIENT CONSULTATION & CALLING ───
+async function callNextPatient() {
+  try {
+    const resp = await fetch('/api/appointments/call-next', { method: 'POST' });
+    const data = await resp.json();
+    if (!resp.ok || !data.success) {
+      toast(data.message || 'कोई प्रतीक्षारत मरीज नहीं है', 'error');
+      return;
+    }
+    toast(`📢 टोकन #${data.token} (${data.name}) को टीवी पर बुलाया गया!`);
+    await openPatient(data.appointment_id, data.patient_id, false);
+    loadQueue();
+  } catch (e) {
+    toast('मरीज बुलाने में त्रुटि हुई', 'error');
+  }
+}
+
+async function ringCurrentPatient() {
+  if (!currentApptId) {
+    toast('कोई मरीज चयनित नहीं है', 'error');
+    return;
+  }
+  try {
+    const resp = await fetch(`/api/appointments/${currentApptId}/call`, { method: 'POST' });
+    const data = await resp.json();
+    if (data.success) {
+      toast(`🔔 टोकन #${data.token} (${data.name}) का साउंड टीवी पर बजाया गया!`);
+      loadQueue();
+    }
+  } catch (e) {
+    toast('घंटी बजाने में त्रुटि हुई', 'error');
+  }
+}
+
+async function openPatient(apptId, patientId, triggerCall = true) {
   currentApptId = apptId;
   currentPatientId = patientId;
+
+  if (triggerCall) {
+    fetch(`/api/appointments/${apptId}/call`, { method: 'POST' }).catch(() => {});
+  }
   loadQueue(); // refresh highlight
 
   // Check queue for token

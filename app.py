@@ -337,8 +337,60 @@ def cancel_appointment(aid):
 
 
 # ─────────────────────────────────────────────
-# ROUTES: LIVE TV WAITING ROOM DISPLAY
+# ROUTES: LIVE TV WAITING ROOM DISPLAY & CALLING
 # ─────────────────────────────────────────────
+
+tv_call_state = {'token': None, 'name': '', 'timestamp': 0}
+
+@app.route('/api/appointments/<int:aid>/call', methods=['POST'])
+@login_required
+def call_appointment(aid):
+    global tv_call_state
+    today = date.today()
+    # Reset other in_progress appts to waiting so only 1 patient is active on TV
+    Appointment.query.filter(Appointment.appointment_date == today, Appointment.status == 'in_progress', Appointment.id != aid).update({'status': 'waiting'})
+    a = Appointment.query.get_or_404(aid)
+    a.status = 'in_progress'
+    db.session.commit()
+    import time
+    tv_call_state = {
+        'token': a.token_number,
+        'name': a.patient.name,
+        'timestamp': int(time.time() * 1000)
+    }
+    return jsonify({
+        'success': True,
+        'token': a.token_number,
+        'name': a.patient.name,
+        'appointment_id': a.id,
+        'patient_id': a.patient_id
+    })
+
+@app.route('/api/appointments/call-next', methods=['POST'])
+@login_required
+def call_next_appointment():
+    global tv_call_state
+    today = date.today()
+    next_appt = Appointment.query.filter_by(appointment_date=today, status='waiting').order_by(Appointment.token_number).first()
+    if not next_appt:
+        return jsonify({'success': False, 'message': 'कतार में कोई प्रतीक्षारत मरीज नहीं है (No waiting patients in queue)'}), 404
+    # Reset previous in_progress appts to waiting
+    Appointment.query.filter(Appointment.appointment_date == today, Appointment.status == 'in_progress').update({'status': 'waiting'})
+    next_appt.status = 'in_progress'
+    db.session.commit()
+    import time
+    tv_call_state = {
+        'token': next_appt.token_number,
+        'name': next_appt.patient.name,
+        'timestamp': int(time.time() * 1000)
+    }
+    return jsonify({
+        'success': True,
+        'token': next_appt.token_number,
+        'name': next_appt.patient.name,
+        'appointment_id': next_appt.id,
+        'patient_id': next_appt.patient_id
+    })
 
 @app.route('/tv')
 def tv_display():
@@ -358,7 +410,10 @@ def get_tv_queue():
             'name': a.patient.name,
             'status': a.status
         })
-    return jsonify(result)
+    return jsonify({
+        'queue': result,
+        'call_event': tv_call_state
+    })
 
 
 # ─────────────────────────────────────────────
@@ -554,6 +609,25 @@ def billing_page():
 @login_required
 def create_bill():
     data = request.json
+    patient_id = data['patient_id']
+
+    # Anti-Duplicate Check: Prevent accidental duplicate bills today
+    if not data.get('force_duplicate'):
+        today = date.today()
+        existing = Bill.query.filter(
+            Bill.patient_id == patient_id,
+            db.func.date(Bill.created_at) == today,
+            Bill.status.notin_(['cancelled', 'refunded'])
+        ).first()
+        if existing:
+            return jsonify({
+                'success': False,
+                'is_duplicate': True,
+                'existing_bill_number': existing.bill_number,
+                'existing_amount': existing.amount_paid,
+                'message': f'इस मरीज का आज पहले से बिल #{existing.bill_number} (₹{existing.amount_paid}) बना हुआ है!'
+            }), 409
+
     consultation_fee = float(data.get('consultation_fee', 0))
     extra = float(data.get('extra_charges', 0))
     discount = float(data.get('discount', 0))
@@ -606,6 +680,29 @@ def refund_bill(bid):
     db.session.commit()
     return jsonify({'success': True})
 
+@app.route('/api/bills/<int:bid>/cancel', methods=['POST'])
+@login_required
+def cancel_bill(bid):
+    b = Bill.query.get_or_404(bid)
+    data = request.json or {}
+    pin = str(data.get('doctor_pin', '')).strip()
+    reason = str(data.get('reason', '')).strip()
+
+    # Anti-Fraud: Doctor PIN verification required for receptionist
+    saved_pin = str(get_setting('doctor_pin', '1234'))
+    if session.get('role') != 'doctor':
+        if not pin or pin != saved_pin:
+            return jsonify({'success': False, 'message': 'अमान्य डॉक्टर पिन (Invalid Doctor PIN)! बिल रद्द करने के लिए डॉक्टर की अनुमति आवश्यक है।'}), 403
+
+    if not reason:
+        return jsonify({'success': False, 'message': 'कृपया बिल रद्द करने का वैध कारण लिखें।'}), 400
+
+    b.status = 'cancelled'
+    user_name = session.get('name', 'Staff')
+    b.extra_charge_desc = f"[रद्द: {reason} | द्वारा: {user_name}] " + (b.extra_charge_desc or '')
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'बिल #{b.bill_number} सफलतापूर्वक रद्द किया गया।'})
+
 @app.route('/api/bills/patient/<int:pid>', methods=['GET'])
 @login_required
 def patient_bills(pid):
@@ -628,18 +725,29 @@ def patient_bills(pid):
 def today_report():
     today = date.today()
     bills = Bill.query.filter(db.func.date(Bill.created_at) == today).all()
-    total_earned = sum(b.amount_paid for b in bills)
+    valid_bills = [b for b in bills if b.status not in ('cancelled', 'refunded')]
+    cancelled_bills = [b for b in bills if b.status == 'cancelled']
+    refunded_bills = [b for b in bills if b.status == 'refunded']
+
+    total_earned = sum(b.amount_paid for b in valid_bills)
     total_patients = Appointment.query.filter_by(appointment_date=today).count()
     completed = Appointment.query.filter_by(appointment_date=today, status='completed').count()
-    cash = sum(b.amount_paid for b in bills if b.payment_mode == 'cash')
-    upi = sum(b.amount_paid for b in bills if b.payment_mode == 'upi')
-    card = sum(b.amount_paid for b in bills if b.payment_mode == 'card')
+    cash = sum(b.amount_paid for b in valid_bills if b.payment_mode == 'cash')
+    upi = sum(b.amount_paid for b in valid_bills if b.payment_mode == 'upi')
+    card = sum(b.amount_paid for b in valid_bills if b.payment_mode == 'card')
     return jsonify({
         'total_earned': total_earned,
         'total_patients': total_patients,
         'completed': completed,
         'cash': cash, 'upi': upi, 'card': card,
-        'bills_count': len(bills)
+        'bills_count': len(valid_bills),
+        'cancelled_count': len(cancelled_bills),
+        'cancelled_amount': sum(b.total_amount for b in cancelled_bills),
+        'cancelled_list': [{
+            'bill_number': b.bill_number,
+            'amount': b.total_amount,
+            'desc': b.extra_charge_desc
+        } for b in cancelled_bills]
     })
 
 @app.route('/api/reports/range', methods=['GET'])
