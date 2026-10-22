@@ -337,6 +337,31 @@ def cancel_appointment(aid):
 
 
 # ─────────────────────────────────────────────
+# ROUTES: LIVE TV WAITING ROOM DISPLAY
+# ─────────────────────────────────────────────
+
+@app.route('/tv')
+def tv_display():
+    clinic_name = get_setting('clinic_name', 'Dr. Dhakad Clinic')
+    doctor_name = get_setting('doctor_name', 'Dr. Dhakad')
+    clinic_phone = get_setting('clinic_phone', '')
+    return render_template('tv.html', clinic_name=clinic_name, doctor_name=doctor_name, clinic_phone=clinic_phone)
+
+@app.route('/api/tv/queue', methods=['GET'])
+def get_tv_queue():
+    today = date.today()
+    appts = Appointment.query.filter_by(appointment_date=today).order_by(Appointment.token_number).all()
+    result = []
+    for a in appts:
+        result.append({
+            'token': a.token_number,
+            'name': a.patient.name,
+            'status': a.status
+        })
+    return jsonify(result)
+
+
+# ─────────────────────────────────────────────
 # ROUTES: DOCTOR
 # ─────────────────────────────────────────────
 

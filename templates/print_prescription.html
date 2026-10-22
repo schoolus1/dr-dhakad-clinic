@@ -7,7 +7,46 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'Inter', sans-serif; font-size: 13px; color: #000; background: #fff; }
-    .page { max-width: 800px; margin: 0 auto; padding: 24px; border: 2px solid #1a73e8; min-height: 297mm; }
+    
+    :root {
+      --letterhead-margin: 55mm;
+    }
+
+    .page { max-width: 800px; margin: 0 auto; padding: 24px; border: 2px solid #1a73e8; min-height: 297mm; background:#fff; }
+    
+    /* Letterhead Mode */
+    body.letterhead-mode .page {
+      border: none !important;
+      padding-top: var(--letterhead-margin) !important;
+    }
+    body.letterhead-mode .header {
+      display: none !important;
+    }
+
+    /* Paper Sizes */
+    body.size-a5 .page {
+      max-width: 560px;
+      padding: 16px;
+      font-size: 11.5px;
+      min-height: auto;
+    }
+    body.size-pos .page {
+      max-width: 80mm;
+      padding: 8px 4px;
+      font-size: 11px;
+      border: 1px dashed #ccc !important;
+      min-height: auto;
+    }
+    body.size-pos .rx-table th, body.size-pos .rx-table td {
+      padding: 4px 2px;
+      font-size: 10px;
+    }
+    body.size-pos .patient-row {
+      flex-direction: column;
+      gap: 4px;
+      padding: 6px;
+    }
+
     .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1a73e8; padding-bottom: 14px; margin-bottom: 14px; }
     .clinic-info h1 { font-size: 1.3rem; font-weight: 700; color: #1a73e8; }
     .clinic-info p { font-size: 0.8rem; color: #555; margin-top: 2px; }
@@ -18,7 +57,7 @@
     .patient-row .item { display: flex; flex-direction: column; }
     .patient-row .lbl { font-size: 0.72rem; color: #666; }
     .patient-row .val { font-weight: 600; }
-    .vitals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+    .vitals { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; }
     .vital-box { background: #fff8e1; border-radius: 6px; padding: 8px 10px; }
     .vital-box .v-lbl { font-size: 0.7rem; color: #666; }
     .vital-box .v-val { font-weight: 700; font-size: 0.95rem; color: #333; }
@@ -28,18 +67,43 @@
     .rx-table th { background: #1a73e8; color: #fff; padding: 8px 10px; text-align: left; font-size: 0.78rem; font-weight: 600; }
     .rx-table td { padding: 8px 10px; border-bottom: 1px solid #e0e0e0; font-size: 0.85rem; }
     .rx-table tr:nth-child(even) td { background: #f8f9ff; }
-    .rx-num { width: 28px; height: 28px; background: #1a73e8; color: #fff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
-    .footer { margin-top: 40px; border-top: 2px solid #1a73e8; padding-top: 12px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .rx-num { width: 24px; height: 24px; background: #1a73e8; color: #fff; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
+    .footer { margin-top: 30px; border-top: 2px solid #1a73e8; padding-top: 12px; display: flex; justify-content: space-between; align-items: flex-end; }
     .signature { text-align: right; }
     .signature .sig-line { width: 180px; border-top: 1px solid #000; margin-top: 40px; padding-top: 4px; font-size: 0.78rem; }
     .date-time { font-size: 0.78rem; color: #555; }
-    @media print { .no-print { display:none; } body { padding: 0; } }
+    @media print { 
+      .no-print { display:none !important; } 
+      body { padding: 0; background: #fff; } 
+      .page { box-shadow: none !important; }
+    }
   </style>
 </head>
 <body>
-  <div class="no-print" style="padding:12px;background:#f0f0f0;">
-    <button onclick="window.print()" style="padding:8px 20px;background:#1a73e8;color:#fff;border:none;border-radius:6px;cursor:pointer;">🖨️ प्रिंट / PDF</button>
-    <button onclick="window.close()" style="padding:8px 20px;margin-left:8px;border:1px solid #ccc;border-radius:6px;cursor:pointer;">बंद करें</button>
+  <!-- Print Controls Toolbar -->
+  <div class="no-print" style="padding:12px 20px;background:#e8f0fe;border-bottom:1px solid #c2d7fa;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <label style="font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:#fff;padding:6px 12px;border-radius:6px;border:1px solid #bcd0f7;">
+        <input type="checkbox" id="chkLetterhead" onchange="toggleLetterhead(this.checked)">
+        📄 पहले से छपे लेटरहेड पर प्रिंट (Letterhead Mode)
+      </label>
+      <div id="letterheadControls" style="display:none;align-items:center;gap:6px;background:#fff;padding:4px 10px;border-radius:6px;border:1px solid #ccc;">
+        <span style="font-size:0.85rem;color:#444;">ऊपरी खाली जगह (Top Margin):</span>
+        <input type="number" id="inpTopMargin" value="55" min="10" max="150" style="width:60px;padding:4px 6px;border:1px solid #ccc;border-radius:4px;" onchange="updateMargin(this.value)"> mm
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;background:#fff;padding:4px 10px;border-radius:6px;border:1px solid #ccc;">
+        <span style="font-size:0.85rem;font-weight:600;">कागज आकार (Paper):</span>
+        <select id="selPaper" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;" onchange="updatePaperSize(this.value)">
+          <option value="a4" selected>A4 (नॉर्मल प्रिंटर)</option>
+          <option value="a5">A5 (डॉक्टर पैड साइज़)</option>
+          <option value="pos">80mm POS (थर्मल रसीद)</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="window.print()" style="padding:8px 24px;background:#1a73e8;color:#fff;font-weight:700;border:none;border-radius:6px;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.15);">🖨️ अभी प्रिंट करें (Print Now)</button>
+      <button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1px solid #ccc;border-radius:6px;cursor:pointer;">बंद करें (Close)</button>
+    </div>
   </div>
 
   <div class="page">
@@ -142,5 +206,49 @@
       </div>
     </div>
   </div>
+
+  <script>
+    function toggleLetterhead(isLetterhead) {
+      document.body.classList.toggle('letterhead-mode', isLetterhead);
+      document.getElementById('letterheadControls').style.display = isLetterhead ? 'inline-flex' : 'none';
+      savePrefs();
+    }
+    function updateMargin(val) {
+      document.documentElement.style.setProperty('--letterhead-margin', val + 'mm');
+      savePrefs();
+    }
+    function updatePaperSize(size) {
+      document.body.classList.remove('size-a5', 'size-pos');
+      if (size === 'a5') document.body.classList.add('size-a5');
+      if (size === 'pos') document.body.classList.add('size-pos');
+      savePrefs();
+    }
+    function savePrefs() {
+      const prefs = {
+        letterhead: document.getElementById('chkLetterhead').checked,
+        margin: document.getElementById('inpTopMargin').value,
+        paper: document.getElementById('selPaper').value
+      };
+      localStorage.setItem('dr_rx_print_prefs', JSON.stringify(prefs));
+    }
+    function loadPrefs() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('dr_rx_print_prefs') || '{}');
+        if (saved.letterhead) {
+          document.getElementById('chkLetterhead').checked = true;
+          toggleLetterhead(true);
+        }
+        if (saved.margin) {
+          document.getElementById('inpTopMargin').value = saved.margin;
+          updateMargin(saved.margin);
+        }
+        if (saved.paper) {
+          document.getElementById('selPaper').value = saved.paper;
+          updatePaperSize(saved.paper);
+        }
+      } catch (e) {}
+    }
+    window.addEventListener('DOMContentLoaded', loadPrefs);
+  </script>
 </body>
 </html>

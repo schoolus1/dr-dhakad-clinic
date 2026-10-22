@@ -321,11 +321,24 @@ async function saveVisit() {
   }
 }
 
-async function saveAndPrint() {
+async function finalizeAndPrint() {
+  if (!currentApptId) { toast('कोई मरीज नहीं चुना (No patient selected)', 'error'); return; }
   await saveVisit();
-  if (currentVisitId) {
-    window.open(`/print/prescription/${currentVisitId}`, '_blank');
-  }
+  if (!currentVisitId) return;
+
+  // Finalize visit and mark appointment completed
+  await fetch(`/api/visits/${currentVisitId}/finalize`, { method: 'POST' });
+  const printVid = currentVisitId;
+
+  toast('✅ पर्ची फाइनल हो गई! प्रिंट विंडो खुल रही है...');
+  window.open(`/print/prescription/${printVid}`, '_blank');
+
+  // Reset and prepare for next patient
+  currentApptId = null;
+  currentVisitId = null;
+  document.getElementById('visitForm').style.display = 'none';
+  document.getElementById('visitPlaceholder').style.display = '';
+  loadQueue();
 }
 
 async function finalizeVisit() {

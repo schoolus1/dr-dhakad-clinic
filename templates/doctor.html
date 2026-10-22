@@ -59,6 +59,7 @@
         <span class="topbar-title" id="pageTitle">मरीजों की कतार</span>
       </div>
       <div class="topbar-actions">
+        <a href="/tv" target="_blank" class="btn btn-sm btn-outline" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">📺 वेटिंग TV डिस्प्ले</a>
         <button class="btn btn-sm btn-outline" onclick="loadQueue()">🔄 रिफ्रेश</button>
         <span id="clock" style="font-size:0.85rem;color:#5f6368;"></span>
       </div>
@@ -145,11 +146,6 @@
                     <label class="form-label">रोग निदान (Diagnosis) *</label>
                     <textarea class="form-control" id="v_diagnosis" rows="2" placeholder="Viral Fever, Hypertension, Diabetes..."></textarea>
                   </div>
-                </div>
-
-                <div class="form-group" style="margin-bottom:8px;">
-                  <label class="form-label">विशेष निर्देश / डॉक्टर नोट्स (Advice & Notes)</label>
-                  <input type="text" class="form-control" id="v_notes" placeholder="परहेज, आराम, पानी ज्यादा पिएं, नमक कम खाएं...">
                 </div>
               </div>
 
@@ -250,18 +246,29 @@
                   </table>
                 </div>
 
-                <!-- Follow-up Date row -->
-                <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
-                  <label style="font-weight:600;font-size:0.85rem;">अगली विजिट (Follow-up Date):</label>
-                  <input type="date" class="form-control" id="v_follow_up" style="max-width:200px;">
+                <!-- Bottom Notes & Follow-up Section below medicines -->
+                <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+                  <div class="form-row">
+                    <div class="form-group flex-1" style="margin-bottom:0;">
+                      <label class="form-label">विशेष निर्देश / डॉक्टर नोट्स (Advice & Notes)</label>
+                      <input type="text" class="form-control" id="v_notes" placeholder="उदा: 3 दिन आराम, गुनगुना पानी पिएं, नमक/मीठा कम खाएं...">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0;min-width:220px;">
+                      <label class="form-label">अगली विजिट (Next Follow-up Date)</label>
+                      <input type="date" class="form-control" id="v_follow_up">
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <!-- Footer Buttons -->
-              <div class="d-flex gap-2">
-                <button class="btn btn-outline flex-1" onclick="saveVisit()">💾 ड्राफ्ट सेव करें (Save Draft)</button>
-                <button class="btn btn-primary flex-1" onclick="saveAndPrint()">🖨️ प्रिंट / PDF (Print Rx)</button>
-                <button class="btn btn-success flex-1" onclick="finalizeVisit()">✅ पर्ची फाइनल करें (Finalize)</button>
+              <!-- Consolidated Footer Buttons -->
+              <div class="d-flex gap-2 align-center">
+                <button type="button" class="btn btn-outline" style="min-width:180px;padding:12px;font-weight:600;" onclick="saveVisit()">
+                  💾 ड्राफ्ट सेव करें (Save Draft)
+                </button>
+                <button type="button" class="btn btn-success flex-1" style="font-size:1.05rem;font-weight:700;padding:12px;" onclick="finalizeAndPrint()">
+                  🖨️ पर्ची फाइनल व प्रिंट करें (Finalize & Print)
+                </button>
               </div>
             </div>
           </div>

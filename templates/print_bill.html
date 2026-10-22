@@ -7,6 +7,17 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family: 'Inter', sans-serif; font-size: 13px; color: #000; background: #fff; padding: 20px; }
+    .bill-container { max-width: 700px; margin: 0 auto; }
+    
+    /* POS 80mm Thermal Receipt */
+    body.size-pos { padding: 4px; }
+    body.size-pos .bill-container { max-width: 80mm; border: none; font-size: 11px; }
+    body.size-pos .header h1 { font-size: 1.1rem; }
+    body.size-pos .header p { font-size: 0.75rem; }
+    body.size-pos .patient-box { grid-template-columns: 1fr; padding: 6px; gap: 2px; }
+    body.size-pos .total-section { width: 100%; }
+    body.size-pos th, body.size-pos td { padding: 4px 2px; font-size: 10.5px; }
+
     .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 14px; }
     .header h1 { font-size: 1.4rem; font-weight: 700; }
     .header p { font-size: 0.85rem; margin-top: 2px; color: #333; }
@@ -24,16 +35,27 @@
     .payment-info { margin-top: 14px; padding: 10px; border: 1px dashed #aaa; border-radius: 6px; }
     .footer { text-align: center; margin-top: 24px; font-size: 0.78rem; color: #555; border-top: 1px solid #ccc; padding-top: 10px; }
     @media print {
-      .no-print { display: none; }
+      .no-print { display: none !important; }
       body { padding: 0; }
     }
   </style>
 </head>
 <body>
-  <div class="no-print" style="margin-bottom:16px;">
-    <button onclick="window.print()" style="padding:8px 20px;background:#1a73e8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">🖨️ प्रिंट करें</button>
-    <button onclick="window.close()" style="padding:8px 20px;margin-left:8px;border:1px solid #ccc;border-radius:6px;cursor:pointer;">बंद करें</button>
+  <div class="no-print" style="margin-bottom:16px;background:#e8f0fe;padding:12px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-weight:600;font-size:0.85rem;">प्रिंटर साइज़ (Paper):</span>
+      <select id="selBillPaper" onchange="updateBillPaper(this.value)" style="padding:6px 10px;border-radius:6px;border:1px solid #ccc;">
+        <option value="normal" selected>A4 / A5 (सामान्य प्रिंटर)</option>
+        <option value="pos">80mm POS थर्मल (रसीद प्रिंटर)</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="window.print()" style="padding:8px 22px;background:#1a73e8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:700;">🖨️ प्रिंट करें (Print)</button>
+      <button onclick="window.close()" style="padding:8px 16px;background:#fff;border:1px solid #ccc;border-radius:6px;cursor:pointer;">बंद करें</button>
+    </div>
   </div>
+
+  <div class="bill-container">
 
   <div class="header">
     <h1>{{ clinic_name }}</h1>
@@ -137,5 +159,20 @@
   <div class="footer">
     धन्यवाद, जल्दी स्वस्थ हों! | {{ clinic_name }} | {{ clinic_phone }}
   </div>
+  </div><!-- /bill-container -->
+
+  <script>
+    function updateBillPaper(val) {
+      document.body.classList.toggle('size-pos', val === 'pos');
+      localStorage.setItem('dr_bill_paper_pref', val);
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('dr_bill_paper_pref');
+      if (saved) {
+        document.getElementById('selBillPaper').value = saved;
+        updateBillPaper(saved);
+      }
+    });
+  </script>
 </body>
 </html>
