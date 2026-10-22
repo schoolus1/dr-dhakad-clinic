@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reception - Dr. Dhakad Clinic</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+<div class="app-shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <h2>🏥 Dr. Dhakad Clinic</h2>
+      <span>रिसेप्शन पैनल</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" onclick="showSection('dashboard')" id="nav-dashboard">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        डैशबोर्ड
+      </button>
+      <button class="nav-item" onclick="showSection('patients')" id="nav-patients">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        मरीज
+      </button>
+      <button class="nav-item" onclick="showSection('appointments')" id="nav-appointments">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+        अपॉइंटमेंट
+      </button>
+      <button class="nav-item" onclick="showSection('queue')" id="nav-queue">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>
+        कतार (Queue)
+      </button>
+      <button class="nav-item" onclick="showSection('billing')" id="nav-billing">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+        बिलिंग
+      </button>
+      <button class="nav-item" onclick="showSection('reports')" id="nav-reports">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
+        रिपोर्ट
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">{{ user_name[0] if user_name else 'R' }}</div>
+        <div>
+          <div class="user-name">{{ user_name }}</div>
+          <div class="user-role">Reception</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="window.location='/logout'">लॉगआउट</button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+    <div class="topbar no-print">
+      <div class="d-flex align-center gap-1">
+        <button class="sidebar-toggle" onclick="toggleSidebar()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <span class="topbar-title" id="pageTitle">डैशबोर्ड</span>
+      </div>
+      <div class="topbar-actions">
+        <span id="clock" style="font-size:0.85rem;color:#5f6368;"></span>
+      </div>
+    </div>
+
+    <div class="page-content">
+      <!-- DASHBOARD SECTION -->
+      <div id="section-dashboard">
+        <div class="stats-grid" id="statsGrid">
+          <div class="stat-card blue">
+            <div class="stat-icon">👥</div>
+            <div class="stat-value" id="stat-patients">-</div>
+            <div class="stat-label">आज के मरीज</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-icon">✅</div>
+            <div class="stat-value" id="stat-completed">-</div>
+            <div class="stat-label">पूर्ण</div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-value" id="stat-waiting">-</div>
+            <div class="stat-label">प्रतीक्षारत</div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-icon">₹</div>
+            <div class="stat-value" id="stat-earning">-</div>
+            <div class="stat-label">आज की कमाई</div>
+          </div>
+        </div>
+        <div class="card mt-2">
+          <div class="card-header">
+            <span class="card-title">⚡ त्वरित कार्य</span>
+          </div>
+          <div class="d-flex gap-2" style="flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="openNewPatientModal()">➕ नया मरीज</button>
+            <button class="btn btn-success" onclick="showSection('queue')">👁️ कतार देखें</button>
+            <button class="btn btn-outline" onclick="showSection('billing')">💳 बिलिंग</button>
+          </div>
+        </div>
+        <!-- Today Queue Preview -->
+        <div class="card mt-2">
+          <div class="card-header">
+            <span class="card-title">📋 आज की कतार (झलक)</span>
+            <button class="btn btn-sm btn-outline" onclick="showSection('queue')">सभी देखें</button>
+          </div>
+          <div id="dashboardQueue"></div>
+        </div>
+      </div>
+
+      <!-- PATIENTS SECTION -->
+      <div id="section-patients" style="display:none;">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">👥 मरीज खोजें / देखें</span>
+            <button class="btn btn-primary btn-sm" onclick="openNewPatientModal()">➕ नया मरीज</button>
+          </div>
+          <div class="search-box mb-2">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="#5f6368"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+            <input type="text" class="form-control" id="patientSearch" placeholder="नाम या मोबाइल नंबर से खोजें..." oninput="searchPatients(this.value)" style="padding-left:36px;">
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>#</th><th>नाम</th><th>मोबाइल</th><th>उम्र/लिंग</th><th>ब्लड ग्रुप</th><th>कार्य</th>
+              </tr></thead>
+              <tbody id="patientTableBody">
+                <tr><td colspan="6" class="loading"><div class="spinner"></div> लोड हो रहा है...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- APPOINTMENTS SECTION -->
+      <div id="section-appointments" style="display:none;">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📅 अपॉइंटमेंट बुक करें</span>
+          </div>
+          <div class="form-row mb-2">
+            <div>
+              <label class="form-label">मरीज खोजें</label>
+              <div class="search-box">
+                <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="#5f6368"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+                <input type="text" class="form-control" id="apptSearch" placeholder="नाम/मोबाइल..." oninput="searchApptPatient(this.value)" style="padding-left:36px;">
+              </div>
+              <div id="apptSearchResults" style="border:1px solid var(--border);border-radius:8px;max-height:180px;overflow-y:auto;display:none;margin-top:4px;"></div>
+            </div>
+            <div>
+              <label class="form-label">तारीख</label>
+              <input type="date" class="form-control" id="apptDate">
+            </div>
+          </div>
+          <div id="selectedPatientCard" style="display:none;" class="card mb-2" style="background:var(--primary-light);">
+            <div class="d-flex justify-between align-center">
+              <div>
+                <strong id="selectedPatientName">-</strong>
+                <span id="selectedPatientMobile" class="text-muted text-small ml-1"></span>
+              </div>
+              <button class="btn btn-sm btn-outline" onclick="clearSelectedPatient()">✖ बदलें</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">नोट (वैकल्पिक)</label>
+            <input type="text" class="form-control" id="apptNotes" placeholder="शिकायत / नोट">
+          </div>
+          <button class="btn btn-primary" id="bookApptBtn" onclick="bookAppointment()" disabled>📋 अपॉइंटमेंट बुक करें</button>
+        </div>
+        <div class="card mt-2">
+          <div class="card-header"><span class="card-title">आज के अपॉइंटमेंट</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>टोकन</th><th>नाम</th><th>मोबाइल</th><th>स्थिति</th><th>कार्य</th></tr></thead>
+              <tbody id="apptTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUEUE SECTION -->
+      <div id="section-queue" style="display:none;">
+        <div class="d-flex justify-between align-center mb-2">
+          <h2 style="font-size:1.1rem;font-weight:600;">🏥 मरीजों की कतार - आज</h2>
+          <button class="btn btn-outline btn-sm" onclick="loadQueue()">🔄 रिफ्रेश</button>
+        </div>
+        <div id="queueList"></div>
+      </div>
+
+      <!-- BILLING SECTION -->
+      <div id="section-billing" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">💳 नया बिल बनाएं</span></div>
+            <div class="form-group">
+              <label class="form-label">मरीज खोजें</label>
+              <input type="text" class="form-control" id="billPatientSearch" placeholder="नाम/मोबाइल..." oninput="searchBillPatient(this.value)">
+              <div id="billSearchResults" style="border:1px solid var(--border);border-radius:8px;max-height:160px;overflow-y:auto;display:none;margin-top:4px;"></div>
+            </div>
+            <div id="billPatientInfo" style="display:none;" class="card mb-2" style="background:var(--primary-light);">
+              <strong id="billPatientName">-</strong> &nbsp;
+              <span id="billPatientMobile" class="text-muted text-small"></span>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Consultation Fee (₹)</label>
+                <input type="number" class="form-control" id="billConsultFee" value="300" oninput="calcBill()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">अतिरिक्त चार्ज (₹)</label>
+                <input type="number" class="form-control" id="billExtraCharge" value="0" oninput="calcBill()">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">अतिरिक्त चार्ज का विवरण</label>
+              <input type="text" class="form-control" id="billExtraDesc" placeholder="जैसे: ECG, Dressing आदि">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">छूट (₹)</label>
+                <input type="number" class="form-control" id="billDiscount" value="0" oninput="calcBill()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">भुगतान का तरीका</label>
+                <select class="form-control" id="billPayMode">
+                  <option value="cash">💵 Cash</option>
+                  <option value="upi">📱 UPI</option>
+                  <option value="card">💳 Card</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">प्राप्त राशि (₹)</label>
+              <input type="number" class="form-control" id="billAmtPaid" value="0" oninput="calcBill()">
+            </div>
+            <hr class="divider">
+            <div class="bill-row">
+              <span>कुल राशि:</span>
+              <span class="bill-total" id="billTotal">₹0</span>
+            </div>
+            <div class="bill-row">
+              <span>बकाया:</span>
+              <span style="font-weight:600;color:var(--danger);" id="billBalance">₹0</span>
+            </div>
+            <button class="btn btn-primary btn-lg w-100 mt-2" id="createBillBtn" onclick="createBill()" disabled>
+              🧾 बिल बनाएं
+            </button>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">📄 हाल के बिल</span></div>
+            <div id="recentBillsList">
+              <div class="empty-state"><p>मरीज चुनें तो उनके बिल दिखेंगे</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- REPORTS SECTION -->
+      <div id="section-reports" style="display:none;">
+        <div class="stats-grid mb-2" id="reportStats">
+          <div class="stat-card blue"><div class="stat-icon">₹</div><div class="stat-value" id="rep-earned">-</div><div class="stat-label">कुल कमाई (आज)</div></div>
+          <div class="stat-card green"><div class="stat-icon">🧾</div><div class="stat-value" id="rep-bills">-</div><div class="stat-label">कुल बिल</div></div>
+          <div class="stat-card orange"><div class="stat-icon">💵</div><div class="stat-value" id="rep-cash">-</div><div class="stat-label">Cash</div></div>
+          <div class="stat-card red"><div class="stat-icon">📱</div><div class="stat-value" id="rep-upi">-</div><div class="stat-label">UPI</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📊 तारीख अनुसार रिपोर्ट</span>
+          </div>
+          <div class="form-row align-center mb-2">
+            <div class="form-group">
+              <label class="form-label">से</label>
+              <input type="date" class="form-control" id="repFrom">
+            </div>
+            <div class="form-group">
+              <label class="form-label">तक</label>
+              <input type="date" class="form-control" id="repTo">
+            </div>
+            <div class="form-group" style="align-self:flex-end;">
+              <button class="btn btn-primary" onclick="loadRangeReport()">देखें</button>
+            </div>
+          </div>
+          <div id="rangeReportResult"></div>
+        </div>
+      </div>
+    </div><!-- page-content -->
+  </div><!-- main-content -->
+</div><!-- app-shell -->
+
+<!-- MODALS -->
+<!-- New Patient Modal -->
+<div class="modal-overlay" id="newPatientModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">➕ नया मरीज दर्ज करें</span>
+      <button class="modal-close" onclick="closeModal('newPatientModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">नाम *</label>
+          <input type="text" class="form-control" id="np_name" placeholder="मरीज का पूरा नाम">
+        </div>
+        <div class="form-group">
+          <label class="form-label">मोबाइल *</label>
+          <input type="tel" class="form-control" id="np_mobile" placeholder="10 अंक का नंबर">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">उम्र</label>
+          <input type="number" class="form-control" id="np_age" placeholder="वर्ष में">
+        </div>
+        <div class="form-group">
+          <label class="form-label">लिंग</label>
+          <select class="form-control" id="np_gender">
+            <option value="">चुनें</option>
+            <option value="Male">पुरुष</option>
+            <option value="Female">महिला</option>
+            <option value="Other">अन्य</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">ब्लड ग्रुप</label>
+          <select class="form-control" id="np_blood">
+            <option value="">ज्ञात नहीं</option>
+            <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+            <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="np_wa" checked> WhatsApp सहमति
+          </label>
+          <span class="text-small text-muted">मरीज को WhatsApp मैसेज भेजने की अनुमति</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">पता</label>
+        <input type="text" class="form-control" id="np_address" placeholder="गाँव/शहर, जिला">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('newPatientModal')">रद्द करें</button>
+      <button class="btn btn-primary" onclick="saveNewPatient()">💾 सेव करें</button>
+    </div>
+  </div>
+</div>
+
+<!-- Patient Detail Modal -->
+<div class="modal-overlay" id="patientDetailModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">👤 मरीज की जानकारी</span>
+      <button class="modal-close" onclick="closeModal('patientDetailModal')">✕</button>
+    </div>
+    <div class="modal-body" id="patientDetailBody">
+      <div class="loading"><div class="spinner"></div> लोड हो रहा है...</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('patientDetailModal')">बंद करें</button>
+      <button class="btn btn-primary" id="bookFromDetailBtn" onclick="bookFromDetail()">📋 अपॉइंटमेंट बुक करें</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bill Success Modal -->
+<div class="modal-overlay" id="billSuccessModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">✅ बिल बन गया!</span>
+      <button class="modal-close" onclick="closeModal('billSuccessModal')">✕</button>
+    </div>
+    <div class="modal-body" id="billSuccessBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('billSuccessModal')">बंद करें</button>
+      <button class="btn btn-primary" id="printBillBtn" onclick="printBill()">🖨️ प्रिंट करें</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="{{ url_for('static', filename='js/reception.js') }}"></script>
+</body>
+</html>

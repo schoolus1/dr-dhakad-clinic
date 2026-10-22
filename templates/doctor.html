@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Panel - Dr. Dhakad Clinic</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    .visit-panel { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+    @media(max-width:900px) { .visit-panel { grid-template-columns: 1fr; } }
+    .rx-header { display: grid; grid-template-columns: 2fr 1fr 1.5fr 0.7fr 1.5fr 40px; gap: 6px; font-size:0.72rem; font-weight:600; color:var(--text2); padding: 0 4px; margin-bottom: 4px; }
+    @media(max-width:768px) { .rx-header { display:none; } }
+  </style>
+</head>
+<body>
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <h2>🩺 Dr. Dhakad Clinic</h2>
+      <span>डॉक्टर पैनल</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active" onclick="showSection('queue')" id="nav-queue">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>
+        मरीजों की कतार
+      </button>
+      <button class="nav-item" onclick="showSection('history')" id="nav-history">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+        मरीज इतिहास
+      </button>
+      <button class="nav-item" onclick="showSection('whatsapp')" id="nav-whatsapp">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        WhatsApp छुट्टी
+      </button>
+      <button class="nav-item" onclick="showSection('settings')" id="nav-settings">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+        सेटिंग्स
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar">{{ user_name[0] if user_name else 'D' }}</div>
+        <div>
+          <div class="user-name">{{ user_name }}</div>
+          <div class="user-role">Doctor</div>
+        </div>
+      </div>
+      <button class="btn-logout" onclick="window.location='/logout'">लॉगआउट</button>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <div class="topbar no-print">
+      <div class="d-flex align-center gap-1">
+        <button class="sidebar-toggle" onclick="toggleSidebar()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <span class="topbar-title" id="pageTitle">मरीजों की कतार</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-sm btn-outline" onclick="loadQueue()">🔄 रिफ्रेश</button>
+        <span id="clock" style="font-size:0.85rem;color:#5f6368;"></span>
+      </div>
+    </div>
+
+    <div class="page-content">
+
+      <!-- QUEUE SECTION -->
+      <div id="section-queue">
+        <div class="visit-panel">
+          <!-- Left: Queue list -->
+          <div>
+            <div class="card" style="height:calc(100vh - 120px);overflow-y:auto;">
+              <div class="card-header">
+                <span class="card-title">📋 आज की कतार</span>
+                <span id="queueCount" class="badge badge-waiting">0</span>
+              </div>
+              <div id="queueList">
+                <div class="loading"><div class="spinner"></div></div>
+              </div>
+            </div>
+          </div>
+          <!-- Right: Visit form -->
+          <div>
+            <div id="visitPlaceholder" class="card" style="text-align:center;padding:60px 20px;">
+              <div style="font-size:3rem;margin-bottom:12px;">🩺</div>
+              <p style="color:var(--text2);">बाईं ओर से कोई मरीज चुनें</p>
+            </div>
+            <div id="visitForm" style="display:none;">
+              <div class="card mb-2">
+                <div class="card-header">
+                  <div>
+                    <div id="visitPatientName" style="font-size:1.1rem;font-weight:700;"></div>
+                    <div id="visitPatientMeta" style="font-size:0.8rem;color:var(--text2);"></div>
+                  </div>
+                  <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-outline" onclick="viewHistory()">📂 इतिहास</button>
+                    <button class="btn btn-sm btn-success" onclick="finalizeVisit()">✅ पूर्ण करें</button>
+                  </div>
+                </div>
+                <!-- Vitals -->
+                <div class="form-row-3">
+                  <div class="form-group">
+                    <label class="form-label">BP (mm Hg)</label>
+                    <input type="text" class="form-control" id="v_bp" placeholder="120/80">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Pulse (bpm)</label>
+                    <input type="text" class="form-control" id="v_pulse" placeholder="72">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Temp (°F)</label>
+                    <input type="text" class="form-control" id="v_temp" placeholder="98.6">
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label class="form-label">Weight (kg)</label>
+                    <input type="text" class="form-control" id="v_weight" placeholder="70">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">शिकायतें (Complaints)</label>
+                    <input type="text" class="form-control" id="v_complaints" placeholder="बुखार, खांसी...">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">निदान (Diagnosis)</label>
+                  <input type="text" class="form-control" id="v_diagnosis" placeholder="Viral Fever, UTI...">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">डॉक्टर नोट्स</label>
+                  <textarea class="form-control" id="v_notes" rows="2" placeholder="अतिरिक्त नोट्स..."></textarea>
+                </div>
+              </div>
+
+              <!-- Prescription -->
+              <div class="card mb-2">
+                <div class="card-header">
+                  <span class="card-title">💊 दवाइयाँ (Prescription)</span>
+                  <button class="btn btn-sm btn-primary" onclick="addRxRow()">➕ दवा जोड़ें</button>
+                </div>
+                <div class="rx-header no-print">
+                  <span>दवा का नाम</span><span>डोज</span><span>समय</span><span>दिन</span><span>निर्देश</span><span></span>
+                </div>
+                <div id="rxList"></div>
+              </div>
+
+              <div class="d-flex gap-2">
+                <button class="btn btn-outline flex-1" onclick="saveVisit()">💾 ड्राफ्ट सेव</button>
+                <button class="btn btn-primary flex-1" onclick="saveAndPrint()">🖨️ सेव + प्रिंट</button>
+                <button class="btn btn-success flex-1" onclick="finalizeVisit()">✅ पूर्ण करें</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY SECTION -->
+      <div id="section-history" style="display:none;">
+        <div class="card mb-2">
+          <div class="card-header"><span class="card-title">🔍 मरीज इतिहास</span></div>
+          <div class="search-box mb-2">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="#5f6368"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+            <input type="text" class="form-control" id="histSearch" placeholder="मरीज का नाम/मोबाइल..." oninput="searchHistPatient(this.value)" style="padding-left:36px;">
+          </div>
+          <div id="histSearchResults"></div>
+        </div>
+        <div id="historyPanel" style="display:none;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" id="histPatientTitle">-</span>
+            </div>
+            <div id="historyList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WHATSAPP SECTION -->
+      <div id="section-whatsapp" style="display:none;">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📲 WhatsApp पर क्लीनिक बंद की जानकारी</span>
+          </div>
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label">छुट्टी शुरू</label>
+              <input type="date" class="form-control" id="wa_from">
+            </div>
+            <div class="form-group">
+              <label class="form-label">छुट्टी तक</label>
+              <input type="date" class="form-control" id="wa_to">
+            </div>
+            <div class="form-group">
+              <label class="form-label">पुनः खुलने की तारीख</label>
+              <input type="date" class="form-control" id="wa_reopen">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">भाषा</label>
+              <select class="form-control" id="wa_lang">
+                <option value="hindi">हिंदी</option>
+                <option value="english">English</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">कस्टम मैसेज (वैकल्पिक)</label>
+              <input type="text" class="form-control" id="wa_custom" placeholder="यहाँ लिखें या खाली छोड़ें">
+            </div>
+          </div>
+          <button class="btn btn-outline mb-2" onclick="previewMessage()">👁️ मैसेज प्रीव्यू</button>
+          <div id="waPreview" class="wa-preview" style="display:none;"></div>
+          <hr class="divider">
+          <div class="card-header">
+            <span class="card-title">👥 मरीज चुनें</span>
+            <button class="btn btn-sm btn-outline" onclick="loadEligiblePatients()">🔄 लोड करें</button>
+          </div>
+          <div style="margin:8px 0;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.875rem;cursor:pointer;">
+              <input type="checkbox" id="selectAllWa" onchange="toggleSelectAll(this.checked)"> सभी चुनें
+            </label>
+          </div>
+          <div id="waPatientList" style="max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;"></div>
+          <div class="mt-2 d-flex gap-2">
+            <button class="btn btn-success btn-lg" onclick="sendWaMessages()">📤 WhatsApp से भेजें</button>
+          </div>
+          <hr class="divider">
+          <div class="card-header">
+            <span class="card-title">📊 भेजे गए मैसेज की स्थिति</span>
+            <button class="btn btn-sm btn-outline" onclick="loadWaLogs()">रिफ्रेश</button>
+          </div>
+          <div id="waLogsSection"></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS SECTION -->
+      <div id="section-settings" style="display:none;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">⚙️ क्लीनिक सेटिंग्स</span></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">क्लीनिक का नाम</label>
+              <input type="text" class="form-control" id="set_clinic_name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">डॉक्टर का नाम</label>
+              <input type="text" class="form-control" id="set_doctor_name">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">पता</label>
+              <input type="text" class="form-control" id="set_address">
+            </div>
+            <div class="form-group">
+              <label class="form-label">फोन नंबर</label>
+              <input type="text" class="form-control" id="set_phone">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">डिफॉल्ट Consultation Fee (₹)</label>
+              <input type="number" class="form-control" id="set_fee">
+            </div>
+          </div>
+          <hr class="divider">
+          <div class="card-title mb-2">📱 WhatsApp Business API (वैकल्पिक)</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">WA Access Token</label>
+              <input type="password" class="form-control" id="set_wa_token" placeholder="API Token">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone Number ID</label>
+              <input type="text" class="form-control" id="set_wa_phone_id" placeholder="Phone Number ID">
+            </div>
+          </div>
+          <div style="background:var(--primary-light);border-radius:8px;padding:12px;margin-bottom:16px;font-size:0.85rem;">
+            💡 WhatsApp Business API के बिना भी काम करेगा — wa.me लिंक खुलेगा। API मुफ्त में मिलती है: <a href="https://developers.facebook.com/docs/whatsapp" target="_blank">Meta Developers</a>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary" onclick="saveSettings()">💾 सेव करें</button>
+            <button class="btn btn-outline" onclick="createBackup()">🗂️ बैकअप बनाएं</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal-overlay" id="historyModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">📂 पुरानी विजिट</span>
+      <button class="modal-close" onclick="closeModal('historyModal')">✕</button>
+    </div>
+    <div class="modal-body" id="historyModalBody">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('historyModal')">बंद करें</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="{{ url_for('static', filename='js/doctor.js') }}"></script>
+</body>
+</html>

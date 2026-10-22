@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>Bill - {{ bill.bill_number }}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Inter', sans-serif; font-size: 13px; color: #000; background: #fff; padding: 20px; }
+    .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 14px; }
+    .header h1 { font-size: 1.4rem; font-weight: 700; }
+    .header p { font-size: 0.85rem; margin-top: 2px; color: #333; }
+    .bill-meta { display: flex; justify-content: space-between; margin-bottom: 14px; }
+    .bill-meta div { font-size: 0.85rem; }
+    .patient-box { border: 1px solid #aaa; border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .patient-box .label { color: #555; font-size: 0.8rem; }
+    .patient-box .val { font-weight: 600; font-size: 0.875rem; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    th { background: #f0f0f0; padding: 8px 10px; text-align: left; font-size: 0.8rem; }
+    td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+    .total-section { margin-left: auto; width: 280px; }
+    .total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 0.875rem; }
+    .total-row.grand { font-size: 1rem; font-weight: 700; border-top: 2px solid #000; padding-top: 8px; margin-top: 4px; }
+    .payment-info { margin-top: 14px; padding: 10px; border: 1px dashed #aaa; border-radius: 6px; }
+    .footer { text-align: center; margin-top: 24px; font-size: 0.78rem; color: #555; border-top: 1px solid #ccc; padding-top: 10px; }
+    @media print {
+      .no-print { display: none; }
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="margin-bottom:16px;">
+    <button onclick="window.print()" style="padding:8px 20px;background:#1a73e8;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;">🖨️ प्रिंट करें</button>
+    <button onclick="window.close()" style="padding:8px 20px;margin-left:8px;border:1px solid #ccc;border-radius:6px;cursor:pointer;">बंद करें</button>
+  </div>
+
+  <div class="header">
+    <h1>{{ clinic_name }}</h1>
+    <p>{{ clinic_address }}</p>
+    <p>📞 {{ clinic_phone }} &nbsp;|&nbsp; Dr. {{ doctor_name }}</p>
+  </div>
+
+  <div class="bill-meta">
+    <div>
+      <strong>बिल नंबर:</strong> {{ bill.bill_number }}<br>
+      <strong>तारीख:</strong> {{ bill.created_at.strftime('%d-%m-%Y %H:%M') }}
+    </div>
+    <div style="text-align:right;">
+      <strong>रसीद / RECEIPT</strong><br>
+      <span style="font-size:0.8rem;color:#555;">{{ bill.payment_mode.upper() }}</span>
+    </div>
+  </div>
+
+  <div class="patient-box">
+    <div>
+      <div class="label">मरीज का नाम</div>
+      <div class="val">{{ patient.name }}</div>
+    </div>
+    <div>
+      <div class="label">मोबाइल</div>
+      <div class="val">{{ patient.mobile }}</div>
+    </div>
+    <div>
+      <div class="label">उम्र</div>
+      <div class="val">{{ patient.age or '-' }} वर्ष</div>
+    </div>
+    <div>
+      <div class="label">लिंग</div>
+      <div class="val">{{ patient.gender or '-' }}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>विवरण</th>
+        <th>राशि (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Consultation Fee</td>
+        <td>₹{{ "%.2f"|format(bill.consultation_fee) }}</td>
+      </tr>
+      {% if bill.extra_charges > 0 %}
+      <tr>
+        <td>2</td>
+        <td>{{ bill.extra_charge_desc or 'अतिरिक्त सेवा' }}</td>
+        <td>₹{{ "%.2f"|format(bill.extra_charges) }}</td>
+      </tr>
+      {% endif %}
+      {% if bill.discount > 0 %}
+      <tr>
+        <td></td>
+        <td style="color:green;">छूट (Discount)</td>
+        <td style="color:green;">- ₹{{ "%.2f"|format(bill.discount) }}</td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  <div class="total-section">
+    <div class="total-row">
+      <span>उप-योग</span>
+      <span>₹{{ "%.2f"|format(bill.consultation_fee + bill.extra_charges) }}</span>
+    </div>
+    {% if bill.discount > 0 %}
+    <div class="total-row">
+      <span>छूट</span>
+      <span>- ₹{{ "%.2f"|format(bill.discount) }}</span>
+    </div>
+    {% endif %}
+    <div class="total-row grand">
+      <span>कुल राशि</span>
+      <span>₹{{ "%.2f"|format(bill.total_amount) }}</span>
+    </div>
+  </div>
+
+  <div class="payment-info">
+    <div><strong>भुगतान:</strong> ₹{{ "%.2f"|format(bill.amount_paid) }} ({{ bill.payment_mode.upper() }})</div>
+    {% if bill.balance > 0 %}
+    <div style="color:red;margin-top:4px;"><strong>बकाया:</strong> ₹{{ "%.2f"|format(bill.balance) }}</div>
+    {% endif %}
+    {% if bill.refund > 0 %}
+    <div style="color:green;margin-top:4px;"><strong>रिफंड:</strong> ₹{{ "%.2f"|format(bill.refund) }}</div>
+    {% endif %}
+    <div style="margin-top:4px;"><strong>स्थिति:</strong>
+      {% if bill.status == 'paid' %}✅ पूरा भुगतान
+      {% elif bill.status == 'partial' %}⚠️ आंशिक भुगतान
+      {% else %}🔄 रिफंड{% endif %}
+    </div>
+  </div>
+
+  <div class="footer">
+    धन्यवाद, जल्दी स्वस्थ हों! | {{ clinic_name }} | {{ clinic_phone }}
+  </div>
+</body>
+</html>
