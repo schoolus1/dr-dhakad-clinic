@@ -54,19 +54,19 @@
 
   <div class="patient-box">
     <div>
-      <div class="label">मरीज का नाम</div>
+      <div class="label">मरीज का नाम (Name)</div>
       <div class="val">{{ patient.name }}</div>
     </div>
     <div>
-      <div class="label">मोबाइल</div>
+      <div class="label">मोबाइल (Mobile)</div>
       <div class="val">{{ patient.mobile }}</div>
     </div>
     <div>
-      <div class="label">उम्र</div>
-      <div class="val">{{ patient.age or '-' }} वर्ष</div>
+      <div class="label">उम्र / Age</div>
+      <div class="val">{{ patient.age or '-' }} वर्ष / Y</div>
     </div>
     <div>
-      <div class="label">लिंग</div>
+      <div class="label">लिंग / Gender</div>
       <div class="val">{{ patient.gender or '-' }}</div>
     </div>
   </div>
@@ -74,29 +74,29 @@
   <table>
     <thead>
       <tr>
-        <th>#</th>
-        <th>विवरण</th>
-        <th>राशि (₹)</th>
+        <th style="width:30px;">#</th>
+        <th>विवरण (Description)</th>
+        <th style="text-align:right;">राशि / Amount (₹)</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>1</td>
-        <td>Consultation Fee</td>
-        <td>₹{{ "%.2f"|format(bill.consultation_fee) }}</td>
+        <td>परामर्श शुल्क / Consultation Fee</td>
+        <td style="text-align:right;">₹{{ "%.2f"|format(bill.consultation_fee) }}</td>
       </tr>
       {% if bill.extra_charges > 0 %}
       <tr>
         <td>2</td>
-        <td>{{ bill.extra_charge_desc or 'अतिरिक्त सेवा' }}</td>
-        <td>₹{{ "%.2f"|format(bill.extra_charges) }}</td>
+        <td>{{ bill.extra_charge_desc or 'अन्य सेवा / Extra Services' }}</td>
+        <td style="text-align:right;">₹{{ "%.2f"|format(bill.extra_charges) }}</td>
       </tr>
       {% endif %}
       {% if bill.discount > 0 %}
       <tr>
         <td></td>
         <td style="color:green;">छूट (Discount)</td>
-        <td style="color:green;">- ₹{{ "%.2f"|format(bill.discount) }}</td>
+        <td style="color:green;text-align:right;">- ₹{{ "%.2f"|format(bill.discount) }}</td>
       </tr>
       {% endif %}
     </tbody>
@@ -104,17 +104,17 @@
 
   <div class="total-section">
     <div class="total-row">
-      <span>उप-योग</span>
+      <span>उप-योग (Subtotal)</span>
       <span>₹{{ "%.2f"|format(bill.consultation_fee + bill.extra_charges) }}</span>
     </div>
     {% if bill.discount > 0 %}
     <div class="total-row">
-      <span>छूट</span>
+      <span>छूट (Discount)</span>
       <span>- ₹{{ "%.2f"|format(bill.discount) }}</span>
     </div>
     {% endif %}
     <div class="total-row grand">
-      <span>कुल राशि</span>
+      <span>कुल राशि (Total Amount)</span>
       <span>₹{{ "%.2f"|format(bill.total_amount) }}</span>
     </div>
   </div>

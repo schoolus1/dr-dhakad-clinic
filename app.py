@@ -67,8 +67,10 @@ class Visit(db.Model):
     pulse = db.Column(db.String(20))
     weight = db.Column(db.String(20))
     temperature = db.Column(db.String(20))
+    spo2 = db.Column(db.String(20))
     diagnosis = db.Column(db.Text)
     doctor_notes = db.Column(db.Text)
+    follow_up = db.Column(db.String(50))
     prescriptions = db.relationship('Prescription', backref='visit', lazy=True)
     visit_date = db.Column(db.DateTime, default=datetime.utcnow)
     is_finalized = db.Column(db.Boolean, default=False)
@@ -77,11 +79,22 @@ class Visit(db.Model):
 class Prescription(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     visit_id = db.Column(db.Integer, db.ForeignKey('visit.id'), nullable=False)
-    medicine_name = db.Column(db.String(100))
-    dose = db.Column(db.String(50))
-    timing = db.Column(db.String(50))   # morning/afternoon/night
-    days = db.Column(db.Integer)
+    medicine_name = db.Column(db.String(150))
+    dose = db.Column(db.String(80))
+    timing = db.Column(db.String(80))
+    days = db.Column(db.String(50))
     instructions = db.Column(db.String(200))
+
+
+class Medicine(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), unique=True, nullable=False)
+    default_dose = db.Column(db.String(80), default='1-0-1 (सुबह-शाम)')
+    default_timing = db.Column(db.String(80), default='खाने के बाद (After Food)')
+    default_duration = db.Column(db.String(50), default='5 Days')
+    default_instructions = db.Column(db.String(200), default='')
+    usage_count = db.Column(db.Integer, default=1)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class Bill(db.Model):
@@ -350,8 +363,10 @@ def create_or_update_visit():
     v.pulse = data.get('pulse', v.pulse)
     v.weight = data.get('weight', v.weight)
     v.temperature = data.get('temperature', v.temperature)
+    v.spo2 = data.get('spo2', v.spo2)
     v.diagnosis = data.get('diagnosis', v.diagnosis)
     v.doctor_notes = data.get('doctor_notes', v.doctor_notes)
+    v.follow_up = data.get('follow_up', v.follow_up)
 
     # Save prescriptions
     if 'prescriptions' in data:
@@ -359,15 +374,41 @@ def create_or_update_visit():
         if not v.is_finalized:
             Prescription.query.filter_by(visit_id=v.id).delete()
         for rx in data['prescriptions']:
+            med_name = (rx.get('medicine_name') or '').strip()
+            if not med_name:
+                continue
+            dose = rx.get('dose', '')
+            timing = rx.get('timing', '')
+            days = str(rx.get('days', ''))
+            instructions = rx.get('instructions', '')
+
             p = Prescription(
                 visit_id=v.id,
-                medicine_name=rx.get('medicine_name'),
-                dose=rx.get('dose'),
-                timing=rx.get('timing'),
-                days=rx.get('days'),
-                instructions=rx.get('instructions')
+                medicine_name=med_name,
+                dose=dose,
+                timing=timing,
+                days=days,
+                instructions=instructions
             )
             db.session.add(p)
+
+            # Auto-save medicine in database so it is remembered next time
+            existing_med = Medicine.query.filter(Medicine.name.ilike(med_name)).first()
+            if existing_med:
+                existing_med.usage_count = (existing_med.usage_count or 1) + 1
+                if dose: existing_med.default_dose = dose
+                if timing: existing_med.default_timing = timing
+                if days: existing_med.default_duration = days
+                if instructions: existing_med.default_instructions = instructions
+            else:
+                db.session.add(Medicine(
+                    name=med_name,
+                    default_dose=dose or '1-0-1 (सुबह-शाम)',
+                    default_timing=timing or 'खाने के बाद (After Food)',
+                    default_duration=days or '5 Days',
+                    default_instructions=instructions or '',
+                    usage_count=1
+                ))
 
     db.session.commit()
     return jsonify({'success': True, 'visit_id': v.id})
@@ -384,8 +425,9 @@ def get_visit(vid):
         'id': v.id, 'patient_id': v.patient_id, 'patient_name': p.name,
         'patient_age': p.age, 'patient_gender': p.gender, 'patient_mobile': p.mobile,
         'complaints': v.complaints, 'bp': v.bp, 'pulse': v.pulse,
-        'weight': v.weight, 'temperature': v.temperature,
+        'weight': v.weight, 'temperature': v.temperature, 'spo2': v.spo2,
         'diagnosis': v.diagnosis, 'doctor_notes': v.doctor_notes,
+        'follow_up': v.follow_up,
         'prescriptions': rxs, 'is_finalized': v.is_finalized,
         'visit_date': v.visit_date.strftime('%d-%m-%Y %H:%M')
     })
@@ -417,10 +459,61 @@ def patient_history(pid):
                 'status': a.status, 'diagnosis': v.diagnosis,
                 'complaints': v.complaints, 'doctor_notes': v.doctor_notes,
                 'bp': v.bp, 'pulse': v.pulse, 'weight': v.weight,
-                'temperature': v.temperature, 'prescriptions': rxs,
+                'temperature': v.temperature, 'spo2': v.spo2,
+                'follow_up': v.follow_up,
+                'prescriptions': rxs,
                 'is_finalized': v.is_finalized
             })
     return jsonify(result)
+
+@app.route('/api/medicines', methods=['GET', 'POST'])
+@login_required
+def handle_medicines():
+    if request.method == 'POST':
+        data = request.json or {}
+        name = (data.get('name') or '').strip()
+        if not name:
+            return jsonify({'success': False, 'message': 'Medicine name required'}), 400
+        existing = Medicine.query.filter(Medicine.name.ilike(name)).first()
+        if existing:
+            existing.usage_count = (existing.usage_count or 1) + 1
+            if data.get('dose'): existing.default_dose = data.get('dose')
+            if data.get('timing'): existing.default_timing = data.get('timing')
+            if data.get('days'): existing.default_duration = str(data.get('days'))
+            if data.get('instructions'): existing.default_instructions = data.get('instructions')
+            med = existing
+        else:
+            med = Medicine(
+                name=name,
+                default_dose=data.get('dose', '1-0-1 (सुबह-शाम)'),
+                default_timing=data.get('timing', 'खाने के बाद (After Food)'),
+                default_duration=str(data.get('days', '5 Days')),
+                default_instructions=data.get('instructions', ''),
+                usage_count=1
+            )
+            db.session.add(med)
+        db.session.commit()
+        return jsonify({'success': True, 'medicine': {
+            'id': med.id, 'name': med.name, 'dose': med.default_dose,
+            'timing': med.default_timing, 'days': med.default_duration,
+            'instructions': med.default_instructions
+        }})
+
+    # GET: return frequent medicines
+    q = request.args.get('q', '').strip()
+    query = Medicine.query
+    if q:
+        query = query.filter(Medicine.name.ilike(f'%{q}%'))
+    medicines = query.order_by(Medicine.usage_count.desc(), Medicine.name.asc()).limit(50).all()
+    return jsonify([{
+        'id': m.id,
+        'name': m.name,
+        'dose': m.default_dose,
+        'timing': m.default_timing,
+        'days': m.default_duration,
+        'instructions': m.default_instructions,
+        'usage_count': m.usage_count
+    } for m in medicines])
 
 
 # ─────────────────────────────────────────────
@@ -720,6 +813,20 @@ def print_prescription(vid):
 
 def init_db():
     db.create_all()
+
+    # Migration: check and add new columns to visit table if they don't exist
+    try:
+        from sqlalchemy import text
+        with db.engine.connect() as conn:
+            cols = [row[1] for row in conn.execute(text("PRAGMA table_info(visit)")).fetchall()]
+            if 'spo2' not in cols:
+                conn.execute(text("ALTER TABLE visit ADD COLUMN spo2 VARCHAR(20)"))
+            if 'follow_up' not in cols:
+                conn.execute(text("ALTER TABLE visit ADD COLUMN follow_up VARCHAR(50)"))
+            conn.commit()
+    except Exception as e:
+        pass
+
     # Create default users if not exist
     if not User.query.filter_by(username='doctor').first():
         u = User(username='doctor', role='doctor', name='Dr. Dhakad')
@@ -740,8 +847,27 @@ def init_db():
     for k, v in defaults.items():
         if not Settings.query.filter_by(key=k).first():
             db.session.add(Settings(key=k, value=v))
+
+    # Starter popular medicines for auto-suggest
+    starter_meds = [
+        ('Tab. Paracetamol 650mg', '1-0-1 (सुबह-शाम)', 'खाने के बाद (After Food)', '5 Days', 'बुखार / दर्द होने पर (For fever)'),
+        ('Tab. Pantoprazole 40mg', '1-0-0 (सुबह)', 'खाने से पहले (Before Food / Empty Stomach)', '7 Days', 'खाली पेट सुबह (Empty stomach)'),
+        ('Tab. Azithromycin 500mg', '1-0-0 (सुबह)', 'खाने के बाद (After Food)', '3 Days', 'दिन में एक बार (Once daily)'),
+        ('Tab. Telmisartan 40mg', '1-0-0 (सुबह)', 'नाश्ते के बाद (After Breakfast)', '30 Days', 'बीपी नियंत्रण हेतु (For BP)'),
+        ('Tab. Cetirizine 10mg', '0-0-1 (रात)', 'सोते समय (At Bedtime)', '5 Days', 'एलर्जी / सर्दी हेतु (For allergy)'),
+        ('Tab. Amoxicillin 500mg', '1-0-1 (सुबह-शाम)', 'खाने के बाद (After Food)', '5 Days', 'एंटीबायोटिक (Antibiotic)'),
+        ('Syp. Multivitamin 200ml', '0-1-0 (दोपहर)', 'खाने के बाद (After Food)', '15 Days', 'ताकत हेतु (Nutritional supplement)'),
+        ('Tab. Ibuprofen + Paracetamol', 'SOS (ज़रूरत पड़ने पर)', 'खाने के बाद (After Food)', '3 Days', 'दर्द होने पर (When pain)')
+    ]
+    for name, dose, timing, dur, inst in starter_meds:
+        if not Medicine.query.filter(Medicine.name.ilike(name)).first():
+            db.session.add(Medicine(
+                name=name, default_dose=dose, default_timing=timing,
+                default_duration=dur, default_instructions=inst, usage_count=5
+            ))
+
     db.session.commit()
-    print("[OK] Database initialized with default users.")
+    print("[OK] Database initialized with default users and medicines.")
     print("   Doctor: username=doctor, password=doctor123")
     print("   Reception: username=reception, password=reception123")
 

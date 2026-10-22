@@ -66,12 +66,13 @@
     </div>
 
     <!-- VITALS -->
-    {% if visit.bp or visit.pulse or visit.temperature or visit.weight %}
+    {% if visit.bp or visit.pulse or visit.temperature or visit.weight or visit.spo2 %}
     <div class="vitals">
       {% if visit.bp %}<div class="vital-box"><div class="v-lbl">BP</div><div class="v-val">{{ visit.bp }}</div></div>{% endif %}
       {% if visit.pulse %}<div class="vital-box"><div class="v-lbl">Pulse</div><div class="v-val">{{ visit.pulse }} bpm</div></div>{% endif %}
       {% if visit.temperature %}<div class="vital-box"><div class="v-lbl">Temp</div><div class="v-val">{{ visit.temperature }}°F</div></div>{% endif %}
       {% if visit.weight %}<div class="vital-box"><div class="v-lbl">Weight</div><div class="v-val">{{ visit.weight }} kg</div></div>{% endif %}
+      {% if visit.spo2 %}<div class="vital-box"><div class="v-lbl">SpO2</div><div class="v-val">{{ visit.spo2 }}%</div></div>{% endif %}
     </div>
     {% endif %}
 
@@ -83,22 +84,22 @@
 
     <!-- DIAGNOSIS -->
     {% if visit.diagnosis %}
-    <div class="section-title">निदान (Diagnosis)</div>
+    <div class="section-title">रोग निदान (Diagnosis)</div>
     <div class="diagnosis"><strong>{{ visit.diagnosis }}</strong></div>
     {% endif %}
 
     <!-- PRESCRIPTION -->
     {% if prescriptions %}
-    <div class="section-title">Rx — दवाइयाँ</div>
+    <div class="section-title">Rx — दवाइयाँ एवं खुराक (Prescription & Dosage)</div>
     <table class="rx-table">
       <thead>
         <tr>
-          <th>#</th>
-          <th>दवा का नाम</th>
-          <th>डोज</th>
-          <th>समय</th>
-          <th>कितने दिन</th>
-          <th>निर्देश</th>
+          <th style="width:30px;">#</th>
+          <th>दवा का नाम (Medicine Name)</th>
+          <th>डोज़ (Dosage)</th>
+          <th>समय (Timing)</th>
+          <th>अवधि (Duration)</th>
+          <th>विशेष निर्देश (Instructions)</th>
         </tr>
       </thead>
       <tbody>
@@ -107,14 +108,8 @@
           <td><span class="rx-num">{{ loop.index }}</span></td>
           <td><strong>{{ rx.medicine_name }}</strong></td>
           <td>{{ rx.dose or '-' }}</td>
-          <td>{% if rx.timing == 'morning' %}सुबह
-              {% elif rx.timing == 'afternoon' %}दोपहर
-              {% elif rx.timing == 'night' %}रात
-              {% elif rx.timing == 'morning-night' %}सुबह-रात
-              {% elif rx.timing == 'thrice' %}3 बार
-              {% elif rx.timing == 'sos' %}जरूरत पर
-              {% else %}{{ rx.timing }}{% endif %}</td>
-          <td>{{ rx.days or '-' }} दिन</td>
+          <td>{{ rx.timing or '-' }}</td>
+          <td>{{ rx.days or '-' }}</td>
           <td>{{ rx.instructions or '-' }}</td>
         </tr>
         {% endfor %}
@@ -124,8 +119,15 @@
 
     <!-- NOTES -->
     {% if visit.doctor_notes %}
-    <div class="section-title">डॉक्टर के निर्देश</div>
+    <div class="section-title">विशेष सलाह / निर्देश (Doctor's Advice & Notes)</div>
     <div class="notes">{{ visit.doctor_notes }}</div>
+    {% endif %}
+
+    <!-- FOLLOW UP -->
+    {% if visit.follow_up %}
+    <div style="margin-top:14px;padding:8px 12px;background:#f8f9fa;border-left:4px solid #1a73e8;font-size:0.9rem;">
+      <strong>अगली विजिट (Next Follow-up Date):</strong> {{ visit.follow_up }}
+    </div>
     {% endif %}
 
     <!-- FOOTER -->

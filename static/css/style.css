@@ -529,3 +529,90 @@ tr:hover td { background: #f8f9ff; }
 }
 .empty-state svg { margin-bottom: 12px; opacity: 0.4; }
 .empty-state p { font-size: 0.9rem; }
+
+/* ─── SMART AUTO-SUGGEST RX & VITALS ─── */
+.vitals-grid-5 {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .vitals-grid-5 { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+  .vitals-grid-5 { grid-template-columns: repeat(2, 1fr); }
+}
+.quick-chips-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 16px 0;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.med-chip {
+  background: var(--surface2, #e8f0fe);
+  color: var(--primary, #1a73e8);
+  border: 1px solid rgba(26,115,232,0.3);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.med-chip:hover {
+  background: var(--primary, #1a73e8);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.rx-input-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.3fr 1.3fr 1fr 1.6fr auto;
+  gap: 8px;
+  align-items: end;
+  background: var(--surface2, #f8f9fa);
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+@media (max-width: 900px) {
+  .rx-input-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) {
+  .rx-input-grid { grid-template-columns: 1fr; }
+}
+.rx-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.rx-table th {
+  background: var(--surface2, #f8f9fa);
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+}
+.rx-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+.rx-prev-banner {
+  background: var(--surface2, #f8f9fa);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.86rem;
+}

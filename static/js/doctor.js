@@ -5,11 +5,13 @@ let currentApptId = null;
 let currentVisitId = null;
 let currentPatientId = null;
 let histCurrentPatientId = null;
-let rxCounter = 0;
+let rxItems = [];
+let allMedicines = [];
 
 // ─── INIT ───
 window.addEventListener('DOMContentLoaded', () => {
   loadQueue();
+  loadMedicines();
   startClock();
   setInterval(loadQueue, 30000);
   // Set default dates for WhatsApp
@@ -18,6 +20,26 @@ window.addEventListener('DOMContentLoaded', () => {
     const el = document.getElementById(id);
     if (el) el.value = today;
   });
+
+  // Enter key in medicine inputs to quickly add
+  const medInput = document.getElementById('rx_name_input');
+  if (medInput) {
+    medInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addMedFromInputs();
+      }
+    });
+  }
+  const instInput = document.getElementById('rx_inst_input');
+  if (instInput) {
+    instInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addMedFromInputs();
+      }
+    });
+  }
 });
 
 function startClock() {
@@ -33,7 +55,7 @@ function showSection(name) {
     const nav = document.getElementById(`nav-${s}`);
     if (nav) nav.classList.toggle('active', s === name);
   });
-  const titles = { queue: 'मरीजों की कतार', history: 'मरीज इतिहास', whatsapp: 'WhatsApp छुट्टी', settings: 'सेटिंग्स' };
+  const titles = { queue: 'मरीजों की कतार (Patient Queue)', history: 'मरीज इतिहास (Patient History)', whatsapp: 'WhatsApp छुट्टी (WhatsApp Notice)', settings: 'सेटिंग्स (Settings)' };
   document.getElementById('pageTitle').textContent = titles[name] || name;
   if (name === 'settings') loadSettings();
   if (name === 'whatsapp') { loadEligiblePatients(); loadWaLogs(); }
@@ -68,7 +90,7 @@ async function loadQueue() {
   document.getElementById('queueCount').textContent = queue.filter(q => q.status === 'waiting' || q.status === 'in_progress').length;
 
   if (!queue.length) {
-    el.innerHTML = '<div class="empty-state"><p>आज कोई मरीज नहीं</p></div>';
+    el.innerHTML = '<div class="empty-state"><p>आज कोई मरीज नहीं (No patients today)</p></div>';
     return;
   }
   el.innerHTML = queue.map(a => `
@@ -76,22 +98,128 @@ async function loadQueue() {
       <div class="token-badge">${a.token}</div>
       <div class="queue-info">
         <div class="queue-name">${a.name}</div>
-        <div class="queue-meta">${a.age || '-'} वर्ष &bull; ${a.gender || '-'}</div>
+        <div class="queue-meta">${a.age || '-'} वर्ष/Y &bull; ${a.gender || '-'} &bull; ${a.mobile}</div>
       </div>
       <span class="badge badge-${a.status.replace('_','-')}">${statusLabel(a.status)}</span>
     </div>`).join('');
 }
 
 function statusLabel(s) {
-  return { waiting: 'प्रतीक्षारत', in_progress: 'जारी', completed: 'पूर्ण', cancelled: 'रद्द' }[s] || s;
+  return { waiting: 'प्रतीक्षारत (Waiting)', in_progress: 'जारी (In-Progress)', completed: 'पूर्ण (Done)', cancelled: 'रद्द (Cancelled)' }[s] || s;
 }
 
+// ─── MEDICINES AUTO-SUGGEST & QUICK CHIPS ───
+async function loadMedicines() {
+  try {
+    const resp = await fetch('/api/medicines');
+    allMedicines = await resp.json();
+    renderMedicineSuggestions();
+    renderQuickChips();
+  } catch (e) {
+    console.error('Error loading medicines:', e);
+  }
+}
+
+function renderMedicineSuggestions() {
+  const dl = document.getElementById('medSuggestionsList');
+  if (!dl) return;
+  dl.innerHTML = allMedicines.map(m => `<option value="${m.name}"></option>`).join('');
+}
+
+function renderQuickChips() {
+  const container = document.getElementById('quickMedChips');
+  if (!container) return;
+  if (!allMedicines.length) {
+    container.innerHTML = '<span style="font-size:0.8rem;color:var(--text2);">कोई दवाई उपलब्ध नहीं</span>';
+    return;
+  }
+  container.innerHTML = allMedicines.slice(0, 15).map(m => `
+    <span class="med-chip" onclick='selectQuickMed(${JSON.stringify(m)})'>
+      + ${m.name}
+    </span>
+  `).join('');
+}
+
+function selectQuickMed(med) {
+  if (typeof med === 'string') {
+    try { med = JSON.parse(med); } catch (e) { med = { name: med }; }
+  }
+  document.getElementById('rx_name_input').value = med.name || '';
+  if (med.dose) document.getElementById('rx_dose_input').value = med.dose;
+  if (med.timing) document.getElementById('rx_timing_input').value = med.timing;
+  if (med.days) document.getElementById('rx_days_input').value = med.days;
+  if (med.instructions) document.getElementById('rx_inst_input').value = med.instructions;
+  document.getElementById('rx_name_input').focus();
+}
+
+function addMedFromInputs() {
+  const nameEl = document.getElementById('rx_name_input');
+  const name = (nameEl.value || '').trim();
+  if (!name) {
+    toast('कृपया दवाई का नाम लिखें (Please enter medicine name)', 'error');
+    nameEl.focus();
+    return;
+  }
+  const dose = document.getElementById('rx_dose_input').value;
+  const timing = document.getElementById('rx_timing_input').value;
+  const days = document.getElementById('rx_days_input').value;
+  const instructions = document.getElementById('rx_inst_input').value.trim();
+
+  rxItems.push({
+    medicine_name: name,
+    dose: dose,
+    timing: timing,
+    days: days,
+    instructions: instructions
+  });
+
+  renderRxTable();
+
+  // Reset inputs
+  nameEl.value = '';
+  document.getElementById('rx_inst_input').value = '';
+  nameEl.focus();
+}
+
+function removeMedItem(index) {
+  rxItems.splice(index, 1);
+  renderRxTable();
+}
+
+function renderRxTable() {
+  const tbody = document.getElementById('rxTableBody');
+  if (!tbody) return;
+  if (!rxItems.length) {
+    tbody.innerHTML = `
+      <tr id="rxEmptyRow">
+        <td colspan="7" style="text-align:center;color:var(--text2);padding:24px;">
+          कोई दवाई नहीं जोड़ी गई। ऊपर से दवाई चुनें या लिखें और <strong>➕ जोड़ें</strong> दबाएं।
+        </td>
+      </tr>`;
+    return;
+  }
+  tbody.innerHTML = rxItems.map((rx, idx) => `
+    <tr>
+      <td style="font-weight:700;color:var(--text2);">${idx + 1}</td>
+      <td style="font-weight:600;color:var(--text);">${rx.medicine_name}</td>
+      <td><span class="badge badge-waiting" style="font-size:0.75rem;">${rx.dose || '-'}</span></td>
+      <td>${rx.timing || '-'}</td>
+      <td><strong>${rx.days || '-'}</strong></td>
+      <td style="color:var(--text2);font-size:0.82rem;">${rx.instructions || '-'}</td>
+      <td style="text-align:center;">
+        <button type="button" class="btn btn-icon btn-danger btn-sm" onclick="removeMedItem(${idx})" title="हटाएं">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ─── PATIENT CONSULTATION ───
 async function openPatient(apptId, patientId) {
   currentApptId = apptId;
   currentPatientId = patientId;
   loadQueue(); // refresh highlight
 
-  // Check if existing visit
+  // Check queue for token
   const queue = await fetch('/api/queue').then(r => r.json());
   const appt = queue.find(a => a.id === apptId);
   if (!appt) return;
@@ -99,21 +227,27 @@ async function openPatient(apptId, patientId) {
   // Load patient info
   const p = await fetch(`/api/patients/${patientId}`).then(r => r.json());
   document.getElementById('visitPatientName').textContent = `${p.name} — टोकन #${appt.token}`;
-  document.getElementById('visitPatientMeta').textContent = `${p.age || '-'} वर्ष, ${p.gender || '-'} · ${p.mobile} · ${p.blood_group || ''}`;
+  document.getElementById('visitPatientMeta').textContent = `${p.age || '-'} वर्ष/Y, ${p.gender || '-'} · 📱 ${p.mobile} · 🩸 ${p.blood_group || 'Blood Group: N/A'}`;
 
   // Show form, hide placeholder
   document.getElementById('visitPlaceholder').style.display = 'none';
   document.getElementById('visitForm').style.display = '';
 
-  // Try to load existing visit
-  if (p.visits.length) {
-    const latestVisit = p.visits.find(v => {
-      // Find today's draft
-    });
+  // Check history for previous visits
+  const history = await fetch(`/api/patients/${patientId}/history`).then(r => r.json());
+  const prevVisits = history.filter(h => h.appointment_id !== apptId);
+  const prevBanner = document.getElementById('prevVisitSummary');
+  const prevBtn = document.getElementById('prevVisitBtn');
+  if (prevVisits.length) {
+    const last = prevVisits[0];
+    prevBanner.innerHTML = `<strong>${last.date}:</strong> ${last.diagnosis || 'परामर्श'} &bull; ${last.prescriptions.length} दवाइयाँ`;
+    if (prevBtn) prevBtn.style.display = 'inline-block';
+  } else {
+    prevBanner.textContent = 'कोई पुरानी पर्ची उपलब्ध नहीं (First Visit)';
+    if (prevBtn) prevBtn.style.display = 'none';
   }
 
-  // Check if appointment already has a visit from history
-  const history = await fetch(`/api/patients/${patientId}/history`).then(r => r.json());
+  // Check if today already has a draft or saved visit
   const todayVisit = history.find(h => h.appointment_id === apptId);
   if (todayVisit) {
     currentVisitId = todayVisit.visit_id;
@@ -130,65 +264,29 @@ function fillVisitForm(v) {
   document.getElementById('v_pulse').value = v.pulse || '';
   document.getElementById('v_temp').value = v.temperature || '';
   document.getElementById('v_weight').value = v.weight || '';
+  document.getElementById('v_spo2').value = v.spo2 || '';
   document.getElementById('v_complaints').value = v.complaints || '';
   document.getElementById('v_diagnosis').value = v.diagnosis || '';
   document.getElementById('v_notes').value = v.doctor_notes || '';
-  // Load prescriptions
-  document.getElementById('rxList').innerHTML = '';
-  rxCounter = 0;
-  v.prescriptions.forEach(rx => addRxRow(rx));
+  document.getElementById('v_follow_up').value = v.follow_up || '';
+
+  rxItems = (v.prescriptions || []).map(r => ({
+    medicine_name: r.medicine_name,
+    dose: r.dose,
+    timing: r.timing,
+    days: r.days,
+    instructions: r.instructions
+  }));
+  renderRxTable();
 }
 
 function clearVisitForm() {
-  ['v_bp','v_pulse','v_temp','v_weight','v_complaints','v_diagnosis','v_notes'].forEach(id => {
-    document.getElementById(id).value = '';
+  ['v_bp','v_pulse','v_temp','v_weight','v_spo2','v_complaints','v_diagnosis','v_notes','v_follow_up','rx_name_input','rx_inst_input'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
   });
-  document.getElementById('rxList').innerHTML = '';
-  rxCounter = 0;
-}
-
-// ─── PRESCRIPTION ───
-function addRxRow(data = {}) {
-  rxCounter++;
-  const idx = rxCounter;
-  const el = document.createElement('div');
-  el.className = 'rx-row';
-  el.id = `rxrow-${idx}`;
-  el.innerHTML = `
-    <input type="text" class="form-control" placeholder="दवा का नाम" value="${data.medicine_name || ''}" id="rx_name_${idx}">
-    <input type="text" class="form-control" placeholder="डोज" value="${data.dose || ''}" id="rx_dose_${idx}">
-    <select class="form-control" id="rx_timing_${idx}">
-      <option value="morning" ${data.timing==='morning'?'selected':''}>सुबह</option>
-      <option value="afternoon" ${data.timing==='afternoon'?'selected':''}>दोपहर</option>
-      <option value="night" ${data.timing==='night'?'selected':''}>रात</option>
-      <option value="morning-night" ${data.timing==='morning-night'?'selected':''}>सुबह-रात</option>
-      <option value="thrice" ${data.timing==='thrice'?'selected':''}>3 बार</option>
-      <option value="sos" ${data.timing==='sos'?'selected':''}>जरूरत पर</option>
-    </select>
-    <input type="number" class="form-control" placeholder="दिन" value="${data.days || ''}" id="rx_days_${idx}" min="1">
-    <input type="text" class="form-control" placeholder="खाने से पहले/बाद" value="${data.instructions || ''}" id="rx_inst_${idx}">
-    <button class="btn btn-icon btn-danger btn-sm" onclick="removeRxRow(${idx})" title="हटाएं">✕</button>
-  `;
-  document.getElementById('rxList').appendChild(el);
-}
-
-function removeRxRow(idx) {
-  const el = document.getElementById(`rxrow-${idx}`);
-  if (el) el.remove();
-}
-
-function getRxData() {
-  const rxRows = document.querySelectorAll('#rxList .rx-row');
-  return Array.from(rxRows).map(row => {
-    const idx = row.id.split('-')[1];
-    return {
-      medicine_name: document.getElementById(`rx_name_${idx}`)?.value || '',
-      dose: document.getElementById(`rx_dose_${idx}`)?.value || '',
-      timing: document.getElementById(`rx_timing_${idx}`)?.value || '',
-      days: parseInt(document.getElementById(`rx_days_${idx}`)?.value) || null,
-      instructions: document.getElementById(`rx_inst_${idx}`)?.value || ''
-    };
-  }).filter(r => r.medicine_name);
+  rxItems = [];
+  renderRxTable();
 }
 
 function getVisitData() {
@@ -198,10 +296,12 @@ function getVisitData() {
     pulse: document.getElementById('v_pulse').value,
     temperature: document.getElementById('v_temp').value,
     weight: document.getElementById('v_weight').value,
+    spo2: document.getElementById('v_spo2').value,
     complaints: document.getElementById('v_complaints').value,
     diagnosis: document.getElementById('v_diagnosis').value,
     doctor_notes: document.getElementById('v_notes').value,
-    prescriptions: getRxData()
+    follow_up: document.getElementById('v_follow_up').value,
+    prescriptions: rxItems
   };
 }
 
@@ -214,9 +314,10 @@ async function saveVisit() {
   const result = await resp.json();
   if (result.success) {
     currentVisitId = result.visit_id;
-    toast('✅ विजिट सेव हो गई');
+    toast('✅ पर्ची और नई दवाइयाँ सुरक्षित हो गईं!');
+    loadMedicines(); // Reload frequent medicines so new ones appear instantly
   } else {
-    toast('त्रुटि', 'error');
+    toast('त्रुटि हुई', 'error');
   }
 }
 
@@ -249,29 +350,30 @@ async function viewHistory() {
   const history = await fetch(`/api/patients/${currentPatientId}/history`).then(r => r.json());
   const p = await fetch(`/api/patients/${currentPatientId}`).then(r => r.json());
   if (!history.length) {
-    document.getElementById('historyModalBody').innerHTML = '<div class="empty-state"><p>कोई पुरानी विजिट नहीं</p></div>';
+    document.getElementById('historyModalBody').innerHTML = '<div class="empty-state"><p>कोई पुरानी विजिट नहीं (No previous visits)</p></div>';
     return;
   }
   document.getElementById('historyModalBody').innerHTML = history.map(v => `
     <div class="card mb-2">
       <div class="d-flex justify-between align-center mb-1">
         <strong>${v.date}</strong>
-        <span class="badge badge-${v.is_finalized ? 'completed' : 'waiting'}">${v.is_finalized ? 'फाइनल' : 'ड्राफ्ट'}</span>
+        <span class="badge badge-${v.is_finalized ? 'completed' : 'waiting'}">${v.is_finalized ? 'फाइनल (Final)' : 'ड्राफ्ट (Draft)'}</span>
       </div>
       ${v.complaints ? `<div class="text-small"><strong>शिकायतें:</strong> ${v.complaints}</div>` : ''}
-      ${v.bp ? `<div class="text-small">BP: ${v.bp} | Pulse: ${v.pulse || '-'} | Temp: ${v.temperature || '-'}</div>` : ''}
+      ${v.bp ? `<div class="text-small">BP: ${v.bp} | Pulse: ${v.pulse || '-'} | SpO2: ${v.spo2 || '-'}% | Temp: ${v.temperature || '-'}°F</div>` : ''}
       ${v.diagnosis ? `<div class="text-small"><strong>निदान:</strong> ${v.diagnosis}</div>` : ''}
-      ${v.doctor_notes ? `<div class="text-small text-muted">${v.doctor_notes}</div>` : ''}
+      ${v.doctor_notes ? `<div class="text-small text-muted"><strong>नोट्स:</strong> ${v.doctor_notes}</div>` : ''}
+      ${v.follow_up ? `<div class="text-small text-muted"><strong>अगली विजिट:</strong> ${v.follow_up}</div>` : ''}
       ${v.prescriptions.length ? `
         <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
           <strong style="font-size:0.8rem;">💊 दवाइयाँ:</strong>
           ${v.prescriptions.map(rx => `
-            <div class="text-small">• ${rx.medicine_name} ${rx.dose} — ${rx.timing} — ${rx.days || '-'} दिन ${rx.instructions ? '(' + rx.instructions + ')' : ''}</div>
+            <div class="text-small">• <strong>${rx.medicine_name}</strong> — ${rx.dose} — ${rx.timing} — ${rx.days || '-'} ${rx.instructions ? '(' + rx.instructions + ')' : ''}</div>
           `).join('')}
         </div>` : ''}
       <div class="d-flex gap-1 mt-1">
-        <button class="btn btn-sm btn-outline" onclick="window.open('/print/prescription/${v.visit_id}','_blank')">🖨️ प्रिंट</button>
-        ${!v.is_finalized ? `<button class="btn btn-sm btn-primary" onclick="copyPrescription(${v.visit_id})">📋 कॉपी करें</button>` : ''}
+        <button class="btn btn-sm btn-outline" onclick="window.open('/print/prescription/${v.visit_id}','_blank')">🖨️ प्रिंट (Print)</button>
+        ${!v.is_finalized ? `<button class="btn btn-sm btn-primary" onclick="copyPrescription(${v.visit_id})">📋 कॉपी करें (Copy)</button>` : ''}
       </div>
     </div>`).join('');
 }
@@ -280,12 +382,17 @@ async function copyPrescription(fromVisitId) {
   if (!currentApptId) { toast('पहले कोई मरीज चुनें (कतार से)', 'error'); return; }
   if (!confirm('इस पर्ची को वर्तमान विजिट में कॉपी करें? डॉक्टर को पुनः समीक्षा करनी होगी।')) return;
   const v = await fetch(`/api/visits/${fromVisitId}`).then(r => r.json());
-  // Copy diagnosis and prescriptions, but mark as draft
   document.getElementById('v_diagnosis').value = v.diagnosis || '';
   document.getElementById('v_complaints').value = v.complaints || '';
-  document.getElementById('rxList').innerHTML = '';
-  rxCounter = 0;
-  v.prescriptions.forEach(rx => addRxRow(rx));
+  if (v.doctor_notes) document.getElementById('v_notes').value = v.doctor_notes;
+  rxItems = (v.prescriptions || []).map(r => ({
+    medicine_name: r.medicine_name,
+    dose: r.dose,
+    timing: r.timing,
+    days: r.days,
+    instructions: r.instructions
+  }));
+  renderRxTable();
   closeModal('historyModal');
   toast('📋 पर्ची कॉपी की गई — समीक्षा करके सेव करें', 'info');
 }

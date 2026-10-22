@@ -91,65 +91,177 @@
               <div class="card mb-2">
                 <div class="card-header">
                   <div>
-                    <div id="visitPatientName" style="font-size:1.1rem;font-weight:700;"></div>
-                    <div id="visitPatientMeta" style="font-size:0.8rem;color:var(--text2);"></div>
+                    <div id="visitPatientName" style="font-size:1.15rem;font-weight:700;"></div>
+                    <div id="visitPatientMeta" style="font-size:0.82rem;color:var(--text2);margin-top:2px;"></div>
                   </div>
                   <div class="d-flex gap-1">
-                    <button class="btn btn-sm btn-outline" onclick="viewHistory()">📂 इतिहास</button>
-                    <button class="btn btn-sm btn-success" onclick="finalizeVisit()">✅ पूर्ण करें</button>
+                    <button class="btn btn-sm btn-outline" onclick="viewHistory()">📂 इतिहास (History)</button>
+                    <button class="btn btn-sm btn-success" onclick="finalizeVisit()">✅ पूर्ण करें (Done)</button>
                   </div>
                 </div>
-                <!-- Vitals -->
-                <div class="form-row-3">
-                  <div class="form-group">
-                    <label class="form-label">BP (mm Hg)</label>
+
+                <!-- Previous Visit Banner -->
+                <div class="rx-prev-banner" id="prevVisitBanner">
+                  <div>
+                    📁 <strong>पुरानी विजिट रिकॉर्ड (Previous Record):</strong> 
+                    <span id="prevVisitSummary" style="color:var(--text2);">कोई पुरानी पर्ची उपलब्ध नहीं (First Visit)</span>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline" id="prevVisitBtn" style="display:none;" onclick="viewHistory()">
+                    पूरी पर्ची देखें (View)
+                  </button>
+                </div>
+
+                <!-- 5 Vitals (BP, Pulse, Weight, Temp, SpO2) -->
+                <div class="vitals-grid-5 mb-2">
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">BP (mmHg)</label>
                     <input type="text" class="form-control" id="v_bp" placeholder="120/80">
                   </div>
-                  <div class="form-group">
+                  <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">Pulse (bpm)</label>
                     <input type="text" class="form-control" id="v_pulse" placeholder="72">
                   </div>
-                  <div class="form-group">
-                    <label class="form-label">Temp (°F)</label>
-                    <input type="text" class="form-control" id="v_temp" placeholder="98.6">
-                  </div>
-                </div>
-                <div class="form-row">
-                  <div class="form-group">
+                  <div class="form-group" style="margin-bottom:0;">
                     <label class="form-label">Weight (kg)</label>
                     <input type="text" class="form-control" id="v_weight" placeholder="70">
                   </div>
-                  <div class="form-group">
-                    <label class="form-label">शिकायतें (Complaints)</label>
-                    <input type="text" class="form-control" id="v_complaints" placeholder="बुखार, खांसी...">
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">Temp (°F)</label>
+                    <input type="text" class="form-control" id="v_temp" placeholder="98.6">
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label">SpO2 (%)</label>
+                    <input type="text" class="form-control" id="v_spo2" placeholder="98">
                   </div>
                 </div>
-                <div class="form-group">
-                  <label class="form-label">निदान (Diagnosis)</label>
-                  <input type="text" class="form-control" id="v_diagnosis" placeholder="Viral Fever, UTI...">
+
+                <!-- Complaints & Diagnosis -->
+                <div class="form-row mb-1">
+                  <div class="form-group flex-1" style="margin-bottom:8px;">
+                    <label class="form-label">मरीज की शिकायतें (Chief Complaints) *</label>
+                    <textarea class="form-control" id="v_complaints" rows="2" placeholder="बुखार, खांसी, कमजोरी..."></textarea>
+                  </div>
+                  <div class="form-group flex-1" style="margin-bottom:8px;">
+                    <label class="form-label">रोग निदान (Diagnosis) *</label>
+                    <textarea class="form-control" id="v_diagnosis" rows="2" placeholder="Viral Fever, Hypertension, Diabetes..."></textarea>
+                  </div>
                 </div>
-                <div class="form-group">
-                  <label class="form-label">डॉक्टर नोट्स</label>
-                  <textarea class="form-control" id="v_notes" rows="2" placeholder="अतिरिक्त नोट्स..."></textarea>
+
+                <div class="form-group" style="margin-bottom:8px;">
+                  <label class="form-label">विशेष निर्देश / डॉक्टर नोट्स (Advice & Notes)</label>
+                  <input type="text" class="form-control" id="v_notes" placeholder="परहेज, आराम, पानी ज्यादा पिएं, नमक कम खाएं...">
                 </div>
               </div>
 
-              <!-- Prescription -->
+              <!-- Prescription Card with Auto-Suggest -->
               <div class="card mb-2">
-                <div class="card-header">
-                  <span class="card-title">💊 दवाइयाँ (Prescription)</span>
-                  <button class="btn btn-sm btn-primary" onclick="addRxRow()">➕ दवा जोड़ें</button>
+                <div class="card-header" style="flex-wrap:wrap;gap:8px;">
+                  <div>
+                    <span class="card-title">💊 दवाइयाँ और खुराक (Smart Auto-Suggest Rx)</span>
+                    <div style="font-size:0.78rem;color:var(--text2);margin-top:2px;">
+                      💡 जो भी नई दवाई आप मैन्युअल लिखेंगे, वह अगली बार किसी भी मरीज के लिए अपने आप Auto-Suggest में आ जाएगी!
+                    </div>
+                  </div>
                 </div>
-                <div class="rx-header no-print">
-                  <span>दवा का नाम</span><span>डोज</span><span>समय</span><span>दिन</span><span>निर्देश</span><span></span>
+
+                <!-- Quick Medicines Chips -->
+                <div class="quick-chips-wrapper" id="quickMedChips">
+                  <!-- Populated via doctor.js from database -->
                 </div>
-                <div id="rxList"></div>
+
+                <!-- Add Medicine Input Bar -->
+                <div class="rx-input-grid">
+                  <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:0.75rem;">दवाई का नाम (Auto-Suggest)</label>
+                    <input type="text" class="form-control" id="rx_name_input" list="medSuggestionsList" placeholder="दवा का नाम टाइप करें...">
+                    <datalist id="medSuggestionsList"></datalist>
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:0.75rem;">डोज़ (Dosage)</label>
+                    <select class="form-control" id="rx_dose_input">
+                      <option value="1-0-1 (सुबह-शाम)">1-0-1 (सुबह-शाम)</option>
+                      <option value="1-0-0 (सुबह)">1-0-0 (सुबह)</option>
+                      <option value="0-0-1 (रात)">0-0-1 (रात)</option>
+                      <option value="1-1-1 (सुबह-दोपहर-शाम)">1-1-1 (सुबह-दोपहर-शाम)</option>
+                      <option value="0-1-0 (दोपहर)">0-1-0 (दोपहर)</option>
+                      <option value="1-0-0-1 (सुबह-रात)">1-0-0-1 (सुबह-रात)</option>
+                      <option value="1-1-1-1 (चार बार)">1-1-1-1 (चार बार)</option>
+                      <option value="SOS (ज़रूरत पड़ने पर)">SOS (ज़रूरत पड़ने पर)</option>
+                      <option value="Stat (तुरंत एक बार)">Stat (तुरंत एक बार)</option>
+                      <option value="OD (दिन में 1 बार)">OD (दिन में 1 बार)</option>
+                      <option value="BD (दिन में 2 बार)">BD (दिन में 2 बार)</option>
+                      <option value="TDS (दिन में 3 बार)">TDS (दिन में 3 बार)</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:0.75rem;">समय (Timing)</label>
+                    <select class="form-control" id="rx_timing_input">
+                      <option value="खाने के बाद (After Food)">खाने के बाद (After Food)</option>
+                      <option value="खाने से पहले (Before Food)">खाने से पहले (Before Food)</option>
+                      <option value="नाश्ते के बाद (After Breakfast)">नाश्ते के बाद (After Breakfast)</option>
+                      <option value="सोते समय (At Bedtime)">सोते समय (At Bedtime)</option>
+                      <option value="भोजन के साथ (With Food)">भोजन के साथ (With Food)</option>
+                      <option value="कभी भी (Any time)">कभी भी (Any time)</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:0.75rem;">अवधि (Duration)</label>
+                    <select class="form-control" id="rx_days_input">
+                      <option value="3 Days">3 Days</option>
+                      <option value="5 Days" selected>5 Days</option>
+                      <option value="7 Days">7 Days</option>
+                      <option value="10 Days">10 Days</option>
+                      <option value="15 Days">15 Days</option>
+                      <option value="1 Month">1 Month</option>
+                      <option value="2 Months">2 Months</option>
+                      <option value="3 Months">3 Months</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                    <label class="form-label" style="font-size:0.75rem;">विशेष निर्देश (Instructions)</label>
+                    <input type="text" class="form-control" id="rx_inst_input" placeholder="उदा: पानी के साथ, दूध के साथ...">
+                  </div>
+                  <div>
+                    <button type="button" class="btn btn-primary" onclick="addMedFromInputs()" style="padding:9px 18px;font-weight:700;">➕ जोड़ें (+ Add)</button>
+                  </div>
+                </div>
+
+                <!-- Prescribed Medicines Table -->
+                <div style="overflow-x:auto;">
+                  <table class="rx-table" id="rxTable">
+                    <thead>
+                      <tr>
+                        <th style="width:36px;">#</th>
+                        <th>दवाई का नाम (Medicine Name)</th>
+                        <th>डोज़ (Dosage)</th>
+                        <th>समय (Timing)</th>
+                        <th>अवधि (Duration)</th>
+                        <th>विशेष निर्देश (Instructions)</th>
+                        <th style="width:50px;text-align:center;">हटाएं</th>
+                      </tr>
+                    </thead>
+                    <tbody id="rxTableBody">
+                      <tr id="rxEmptyRow">
+                        <td colspan="7" style="text-align:center;color:var(--text2);padding:24px;">
+                          कोई दवाई नहीं जोड़ी गई। ऊपर से दवाई चुनें या लिखें और <strong>➕ जोड़ें</strong> दबाएं।
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Follow-up Date row -->
+                <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+                  <label style="font-weight:600;font-size:0.85rem;">अगली विजिट (Follow-up Date):</label>
+                  <input type="date" class="form-control" id="v_follow_up" style="max-width:200px;">
+                </div>
               </div>
 
+              <!-- Footer Buttons -->
               <div class="d-flex gap-2">
-                <button class="btn btn-outline flex-1" onclick="saveVisit()">💾 ड्राफ्ट सेव</button>
-                <button class="btn btn-primary flex-1" onclick="saveAndPrint()">🖨️ सेव + प्रिंट</button>
-                <button class="btn btn-success flex-1" onclick="finalizeVisit()">✅ पूर्ण करें</button>
+                <button class="btn btn-outline flex-1" onclick="saveVisit()">💾 ड्राफ्ट सेव करें (Save Draft)</button>
+                <button class="btn btn-primary flex-1" onclick="saveAndPrint()">🖨️ प्रिंट / PDF (Print Rx)</button>
+                <button class="btn btn-success flex-1" onclick="finalizeVisit()">✅ पर्ची फाइनल करें (Finalize)</button>
               </div>
             </div>
           </div>
