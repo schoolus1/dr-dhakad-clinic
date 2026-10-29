@@ -190,9 +190,11 @@ function clearSelectedPatient() {
 
 // ─── PATIENT MODAL ───
 function openNewPatientModal() {
-  ['np_name','np_mobile','np_age','np_address'].forEach(id => document.getElementById(id).value = '');
+  ['np_name','np_mobile','np_age','np_address','np_block'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('np_gender').value = '';
   document.getElementById('np_blood').value = '';
+  document.getElementById('np_district').value = '';
+  document.getElementById('np_state').value = 'Madhya Pradesh';
   document.getElementById('np_wa').checked = true;
   openModal('newPatientModal');
 }
@@ -208,6 +210,9 @@ async function saveNewPatient() {
     gender: document.getElementById('np_gender').value,
     blood_group: document.getElementById('np_blood').value,
     address: document.getElementById('np_address').value,
+    state: document.getElementById('np_state').value || 'Madhya Pradesh',
+    district: document.getElementById('np_district').value,
+    block: document.getElementById('np_block').value,
     whatsapp_consent: document.getElementById('np_wa').checked
   };
   const resp = await fetch('/api/patients', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });

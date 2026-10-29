@@ -42,6 +42,9 @@ class Patient(db.Model):
     gender = db.Column(db.String(10))
     address = db.Column(db.String(250))
     blood_group = db.Column(db.String(5))
+    state = db.Column(db.String(100), default='Madhya Pradesh')
+    district = db.Column(db.String(100))
+    block = db.Column(db.String(100))
     whatsapp_consent = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     appointments = db.relationship('Appointment', backref='patient', lazy=True)
@@ -252,6 +255,9 @@ def add_patient():
         name=data['name'], mobile=data['mobile'],
         age=data.get('age'), gender=data.get('gender'),
         address=data.get('address', ''), blood_group=data.get('blood_group', ''),
+        state=data.get('state', 'Madhya Pradesh'),
+        district=data.get('district', ''),
+        block=data.get('block', ''),
         whatsapp_consent=data.get('whatsapp_consent', True)
     )
     db.session.add(p)
@@ -276,6 +282,9 @@ def get_patient(pid):
         'id': p.id, 'name': p.name, 'mobile': p.mobile,
         'age': p.age, 'gender': p.gender, 'address': p.address,
         'blood_group': p.blood_group, 'whatsapp_consent': p.whatsapp_consent,
+        'state': p.state or 'Madhya Pradesh',
+        'district': p.district or '',
+        'block': p.block or '',
         'created_at': p.created_at.strftime('%d-%m-%Y'),
         'visits': visits
     })
@@ -405,19 +414,30 @@ def tv_display():
 
 @app.route('/api/tv/queue', methods=['GET'])
 def get_tv_queue():
-    today = date.today()
-    appts = Appointment.query.filter_by(appointment_date=today).order_by(Appointment.token_number).all()
-    result = []
-    for a in appts:
-        result.append({
-            'token': a.token_number,
-            'name': a.patient.name,
-            'status': a.status
+    try:
+        today = date.today()
+        appts = Appointment.query.filter(
+            Appointment.appointment_date == today,
+            Appointment.status != 'cancelled'
+        ).order_by(Appointment.token_number).all()
+        result = []
+        for a in appts:
+            try:
+                pname = a.patient.name if a.patient else 'मरीज'
+            except Exception:
+                pname = 'मरीज'
+            result.append({
+                'token': a.token_number,
+                'name': pname,
+                'status': a.status
+            })
+        return jsonify({
+            'queue': result,
+            'call_event': tv_call_state
         })
-    return jsonify({
-        'queue': result,
-        'call_event': tv_call_state
-    })
+    except Exception as ex:
+        return jsonify({'queue': [], 'call_event': None, 'error': str(ex)})
+
 
 
 # ─────────────────────────────────────────────
@@ -960,6 +980,14 @@ def init_db():
                 conn.execute(text("ALTER TABLE visit ADD COLUMN spo2 VARCHAR(20)"))
             if 'follow_up' not in cols:
                 conn.execute(text("ALTER TABLE visit ADD COLUMN follow_up VARCHAR(50)"))
+            # Migration: patient table new columns
+            pcols = [row[1] for row in conn.execute(text("PRAGMA table_info(patient)")).fetchall()]
+            if 'state' not in pcols:
+                conn.execute(text("ALTER TABLE patient ADD COLUMN state VARCHAR(100) DEFAULT 'Madhya Pradesh'"))
+            if 'district' not in pcols:
+                conn.execute(text("ALTER TABLE patient ADD COLUMN district VARCHAR(100)"))
+            if 'block' not in pcols:
+                conn.execute(text("ALTER TABLE patient ADD COLUMN block VARCHAR(100)"))
             conn.commit()
     except Exception as e:
         pass

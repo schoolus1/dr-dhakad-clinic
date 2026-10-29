@@ -76,12 +76,14 @@
           <!-- Left: Queue list -->
           <div>
             <div class="card" style="height:calc(100vh - 120px);overflow-y:auto;">
-              <div class="card-header">
-                <span class="card-title">📋 आज की कतार</span>
-                <span id="queueCount" class="badge badge-waiting">0</span>
+              <div class="card-header" style="margin-bottom:10px;">
+                <div class="d-flex align-center gap-1">
+                  <span class="card-title">📋 आज की कतार</span>
+                  <span id="queueCount" class="badge badge-waiting">0</span>
+                </div>
               </div>
-              <div style="padding: 10px 14px; border-bottom: 1px solid var(--border); background: #f8fafc;">
-                <button type="button" class="btn btn-primary" onclick="callNextPatient()" style="width:100%; justify-content:center; font-weight:700; padding:9px 12px; font-size:0.86rem; box-shadow:0 2px 6px rgba(26,115,232,0.25);" title="कतार से अगला मरीज टीवी पर बुलाएं">
+              <div style="margin-bottom:12px;">
+                <button type="button" class="btn btn-primary" onclick="callNextPatient()" style="width:100%; justify-content:center; font-weight:700; padding:9px 14px; font-size:0.88rem; border-radius:8px; box-shadow:0 2px 6px rgba(26,115,232,0.25);" title="कतार से अगला मरीज टीवी पर बुलाएं">
                   🔔 अगला मरीज बुलाएं (Call Next)
                 </button>
               </div>
@@ -436,6 +438,19 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('historyModal')">बंद करें</button>
+    </div>
+  </div>
+</div>
+
+<!-- Custom Confirmation Dialog Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal" style="max-width:440px; border-radius:14px; text-align:center; padding:28px 24px; box-shadow:0 20px 45px rgba(0,0,0,0.35);">
+    <div style="font-size:3rem; margin-bottom:12px; line-height:1;" id="confirmModalIcon">🔒</div>
+    <h3 style="font-size:1.2rem; font-weight:700; color:var(--text); margin-bottom:8px;" id="confirmModalTitle">विजिट पूर्ण करें?</h3>
+    <p style="font-size:0.92rem; color:var(--text2); line-height:1.5; margin-bottom:24px;" id="confirmModalMsg">क्या आप इस विजिट को पूर्ण करना चाहते हैं? पूर्ण होने के बाद यह लॉक हो जाएगी।</p>
+    <div style="display:flex; gap:12px; justify-content:center;">
+      <button type="button" class="btn btn-outline" id="confirmModalCancelBtn" style="min-width:110px; padding:9px 18px; font-weight:600; border-radius:8px;">रद्द करें (Cancel)</button>
+      <button type="button" class="btn btn-success" id="confirmModalOkBtn" style="min-width:140px; padding:9px 18px; font-weight:600; border-radius:8px; box-shadow:0 3px 10px rgba(16,185,129,0.35);">✅ हाँ, पूर्ण करें</button>
     </div>
   </div>
 </div>

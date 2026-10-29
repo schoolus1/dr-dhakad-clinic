@@ -82,6 +82,43 @@ function toast(msg, type = 'success') {
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+function showConfirmDialog({ title = 'पुष्टि करें', message = 'क्या आप जारी रखना चाहते हैं?', icon = '❓', okText = 'हाँ, करें', cancelText = 'रद्द करें (Cancel)', okClass = 'btn-primary' } = {}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirmModal');
+    if (!modal) {
+      resolve(confirm(message));
+      return;
+    }
+    const iconEl = document.getElementById('confirmModalIcon');
+    const titleEl = document.getElementById('confirmModalTitle');
+    const msgEl = document.getElementById('confirmModalMsg');
+    const okBtn = document.getElementById('confirmModalOkBtn');
+    const cancelBtn = document.getElementById('confirmModalCancelBtn');
+
+    if (iconEl) iconEl.textContent = icon;
+    if (titleEl) titleEl.textContent = title;
+    if (msgEl) msgEl.textContent = message;
+
+    if (okBtn) {
+      okBtn.textContent = okText;
+      okBtn.className = `btn ${okClass}`;
+    }
+    if (cancelBtn) {
+      cancelBtn.textContent = cancelText;
+    }
+
+    const cleanup = () => {
+      closeModal('confirmModal');
+      if (okBtn) okBtn.onclick = null;
+      if (cancelBtn) cancelBtn.onclick = null;
+    };
+
+    if (okBtn) okBtn.onclick = () => { cleanup(); resolve(true); };
+    if (cancelBtn) cancelBtn.onclick = () => { cleanup(); resolve(false); };
+    openModal('confirmModal');
+  });
+}
+
 // ─── QUEUE ───
 async function loadQueue() {
   const resp = await fetch('/api/queue');
@@ -383,7 +420,15 @@ async function finalizeVisit() {
     await saveVisit();
     if (!currentVisitId) { toast('पहले सेव करें', 'error'); return; }
   }
-  if (!confirm('क्या आप इस विजिट को पूर्ण करना चाहते हैं? पूर्ण होने के बाद यह लॉक हो जाएगी।')) return;
+  const ok = await showConfirmDialog({
+    title: 'विजिट पूर्ण करें (Finalize Visit)?',
+    message: 'क्या आप इस विजिट को पूर्ण करना चाहते हैं? पूर्ण होने के बाद यह लॉक हो जाएगी।',
+    icon: '🔒',
+    okText: '✅ हाँ, पूर्ण करें',
+    cancelText: 'रद्द करें (Cancel)',
+    okClass: 'btn-success'
+  });
+  if (!ok) return;
   await fetch(`/api/visits/${currentVisitId}/finalize`, { method: 'POST' });
   toast('✅ विजिट पूर्ण!');
   currentApptId = null;

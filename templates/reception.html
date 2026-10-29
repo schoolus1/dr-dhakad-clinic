@@ -343,12 +343,50 @@
           <span class="text-small text-muted">मरीज को WhatsApp मैसेज भेजने की अनुमति</span>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">पता</label>
-        <input type="text" class="form-control" id="np_address" placeholder="गाँव/शहर, जिला">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">राज्य (State)</label>
+          <input type="text" class="form-control" id="np_state" value="Madhya Pradesh" placeholder="राज्य">
+        </div>
+        <div class="form-group">
+          <label class="form-label">जिला (District)</label>
+          <select class="form-control" id="np_district">
+            <option value="">-- जिला चुनें --</option>
+            <option>Agar Malwa</option><option>Alirajpur</option><option>Anuppur</option>
+            <option>Ashoknagar</option><option>Balaghat</option><option>Barwani</option>
+            <option>Betul</option><option>Bhind</option><option>Bhopal</option>
+            <option>Burhanpur</option><option>Chhatarpur</option><option>Chhindwara</option>
+            <option>Damoh</option><option>Datia</option><option>Dewas</option>
+            <option>Dhar</option><option>Dindori</option><option>Guna</option>
+            <option>Gwalior</option><option>Harda</option><option>Hoshangabad</option>
+            <option>Indore</option><option>Jabalpur</option><option>Jhabua</option>
+            <option>Katni</option><option>Khandwa</option><option>Khargone</option>
+            <option>Maihar</option><option>Mandla</option><option>Mandsaur</option>
+            <option>Morena</option><option>Mungeli</option><option>Narsinghpur</option>
+            <option>Narsimhapur</option><option>Neemuch</option><option>Niwari</option>
+            <option>Panna</option><option>Raisen</option><option>Rajgarh</option>
+            <option>Ratlam</option><option>Rewa</option><option>Sagar</option>
+            <option>Satna</option><option>Sehore</option><option>Seoni</option>
+            <option>Shahdol</option><option>Shajapur</option><option>Sheopur</option>
+            <option>Shivpuri</option><option>Sidhi</option><option>Singrauli</option>
+            <option>Tikamgarh</option><option>Ujjain</option><option>Umaria</option>
+            <option>Vidisha</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">ब्लॉक/तहसील (Block)</label>
+          <input type="text" class="form-control" id="np_block" placeholder="ब्लॉक / तहसील का नाम">
+        </div>
+        <div class="form-group">
+          <label class="form-label">पता (Address)</label>
+          <input type="text" class="form-control" id="np_address" placeholder="गाँव/मोहल्ला">
+        </div>
       </div>
     </div>
     <div class="modal-footer">
+
       <button class="btn btn-outline" onclick="closeModal('newPatientModal')">रद्द करें</button>
       <button class="btn btn-primary" onclick="saveNewPatient()">💾 सेव करें</button>
     </div>

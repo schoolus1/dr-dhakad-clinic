@@ -459,18 +459,38 @@
     async function fetchQueue() {
       try {
         const resp = await fetch('/api/tv/queue');
+        if (!resp.ok) {
+          showQueueError('Server Error ' + resp.status);
+          return;
+        }
         const res = await resp.json();
         const queue = Array.isArray(res) ? res : (res.queue || []);
         const callEvent = res.call_event || null;
 
         // 1. Current Active (in_progress)
-        const active = queue.find(q => q.status === 'in_progress');
         const activeTokenEl = document.getElementById('activeToken');
         const activePatientEl = document.getElementById('activePatient');
+        const active = queue.find(q => q.status === 'in_progress');
 
         if (active) {
           activeTokenEl.textContent = `T-${active.token.toString().padStart(2, '0')}`;
           activePatientEl.textContent = active.name;
+          activeTokenEl.style.color = '#00e676';
+        } else {
+          const nextWaiting = queue.find(q => q.status === 'waiting');
+          if (nextWaiting) {
+            activeTokenEl.textContent = `T-${nextWaiting.token.toString().padStart(2, '0')}`;
+            activePatientEl.textContent = `${nextWaiting.name} (तैयार रहें)`;
+            activeTokenEl.style.color = '#facc15';
+          } else {
+            activeTokenEl.textContent = '--';
+            activeTokenEl.style.color = '#fff';
+            if (queue.length > 0) {
+              activePatientEl.textContent = 'सभी मरीज पूर्ण ✅ (All Done)';
+            } else {
+              activePatientEl.textContent = 'प्रतीक्षारत (Please Wait)';
+            }
+          }
         }
 
         // Check if explicit call event fired (supports re-ringing)
@@ -488,46 +508,62 @@
             announcePatient(active.token, active.name);
           }
         }
-        } else {
-          // If no one in_progress, check first waiting
-          const nextWaiting = queue.find(q => q.status === 'waiting');
-          if (nextWaiting) {
-            activeTokenEl.textContent = `T-${nextWaiting.token.toString().padStart(2, '0')}`;
-            activePatientEl.textContent = `${nextWaiting.name} (तैयार रहें)`;
-          } else {
-            activeTokenEl.textContent = '--';
-            activePatientEl.textContent = 'कोई मरीज प्रतीक्षारत नहीं (All Done)';
-          }
-        }
 
-        // 2. Upcoming Waiting List
+        // 2. RIGHT PANEL: Show ALL today's patients (waiting + in_progress + completed)
         const waitingList = queue.filter(q => q.status === 'waiting');
-        document.getElementById('waitingCountBadge').textContent = `${waitingList.length} प्रतीक्षारत`;
+        const totalWaiting = waitingList.length;
+        document.getElementById('waitingCountBadge').textContent = `${totalWaiting} प्रतीक्षारत`;
 
         const container = document.getElementById('upcomingList');
-        if (!waitingList.length) {
+        if (!queue.length) {
           container.innerHTML = `
             <div style="text-align:center;padding:50px 20px;color:#64748b;">
-              <div style="font-size:2.5rem;margin-bottom:8px;">✅</div>
-              <p style="font-size:1.15rem;font-weight:600;">कतार में कोई मरीज प्रतीक्षारत नहीं है</p>
+              <div style="font-size:2.5rem;margin-bottom:8px;">📋</div>
+              <p style="font-size:1.15rem;font-weight:600;">आज कोई मरीज नहीं</p>
             </div>`;
           return;
         }
 
-        container.innerHTML = waitingList.slice(0, 5).map((q, idx) => `
-          <div class="queue-row">
+        // Status badge style helper
+        function statusBadge(status) {
+          if (status === 'in_progress') return {bg:'rgba(0,210,255,0.15)',color:'#00d2ff',border:'#00d2ff',text:'🔵 जारी (In Progress)'};
+          if (status === 'completed')  return {bg:'rgba(0,230,118,0.1)', color:'#00e676',border:'#00e676',text:'✅ पूर्ण (Done)'};
+          if (status === 'waiting')    return {bg:'rgba(250,204,21,0.12)',color:'#facc15',border:'rgba(250,204,21,0.4)',text:'⏳ प्रतीक्षारत'};
+          return {bg:'rgba(148,163,184,0.1)',color:'#94a3b8',border:'#475569',text:status};
+        }
+
+        container.innerHTML = queue.map((q, idx) => {
+          const s = statusBadge(q.status);
+          const isCompleted = q.status === 'completed';
+          return `
+          <div class="queue-row" style="${isCompleted ? 'opacity:0.55;' : ''}">
             <div class="queue-row-left">
-              <div class="queue-token-pill">T-${q.token.toString().padStart(2, '0')}</div>
-              <div class="queue-row-name">${q.name}</div>
+              <div class="queue-token-pill" style="${isCompleted ? 'color:#64748b;text-decoration:line-through;' : ''}">${q.token.toString().padStart(2,'0')}</div>
+              <div class="queue-row-name" style="${isCompleted ? 'text-decoration:line-through;color:#64748b;' : ''}">${q.name}</div>
             </div>
-            <div class="queue-row-status">${idx === 0 ? '👉 अगला नंबर (Next)' : 'प्रतीक्षारत (Waiting)'}</div>
-          </div>
-        `).join('');
+            <div class="queue-row-status" style="background:${s.bg};color:${s.color};border:1px solid ${s.border};">${s.text}</div>
+          </div>`;
+        }).join('');
 
       } catch (err) {
         console.error('TV Queue update error:', err);
+        showQueueError('Connection Error');
       }
     }
+
+    function showQueueError(msg) {
+      const container = document.getElementById('upcomingList');
+      if (container && container.querySelector('.tv-error-state') === null) {
+        container.innerHTML = `
+          <div class="tv-error-state" style="text-align:center;padding:40px 20px;color:#ef4444;">
+            <div style="font-size:2rem;margin-bottom:8px;">⚠️</div>
+            <p style="font-size:1rem;font-weight:600;">${msg}</p>
+            <p style="font-size:0.85rem;color:#64748b;margin-top:4px;">Auto-retry हो रहा है...</p>
+          </div>`;
+      }
+    }
+
+
 
     // Auto-update every 4 seconds
     setInterval(fetchQueue, 4000);
