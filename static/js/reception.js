@@ -71,6 +71,43 @@ function toast(msg, type = 'success') {
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+function showConfirmDialog({ title = 'पुष्टि करें', message = 'क्या आप जारी रखना चाहते हैं?', icon = '⚠️', okText = 'हाँ, करें', cancelText = 'रद्द करें (Cancel)', okClass = 'btn-danger' } = {}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirmModal');
+    if (!modal) {
+      resolve(confirm(message));
+      return;
+    }
+    const iconEl = document.getElementById('confirmModalIcon');
+    const titleEl = document.getElementById('confirmModalTitle');
+    const msgEl = document.getElementById('confirmModalMsg');
+    const okBtn = document.getElementById('confirmModalOkBtn');
+    const cancelBtn = document.getElementById('confirmModalCancelBtn');
+
+    if (iconEl) iconEl.textContent = icon;
+    if (titleEl) titleEl.textContent = title;
+    if (msgEl) msgEl.textContent = message;
+
+    if (okBtn) {
+      okBtn.textContent = okText;
+      okBtn.className = `btn ${okClass}`;
+    }
+    if (cancelBtn) {
+      cancelBtn.textContent = cancelText;
+    }
+
+    const cleanup = () => {
+      closeModal('confirmModal');
+      if (okBtn) okBtn.onclick = null;
+      if (cancelBtn) cancelBtn.onclick = null;
+    };
+
+    if (okBtn) okBtn.onclick = () => { cleanup(); resolve(true); };
+    if (cancelBtn) cancelBtn.onclick = () => { cleanup(); resolve(false); };
+    openModal('confirmModal');
+  });
+}
+
 // ─── DASHBOARD ───
 async function loadDashboard() {
   try {
@@ -322,7 +359,15 @@ async function loadQueue() {
 }
 
 async function cancelAppt(id) {
-  if (!confirm('अपॉइंटमेंट रद्द करना चाहते हैं?')) return;
+  const ok = await showConfirmDialog({
+    title: 'अपॉइंटमेंट रद्द करें?',
+    message: 'क्या आप वाकई इस अपॉइंटमेंट को रद्द (Cancel) करना चाहते हैं?',
+    icon: '❌',
+    okText: 'हाँ, रद्द करें',
+    cancelText: 'रद्द न करें (Back)',
+    okClass: 'btn-danger'
+  });
+  if (!ok) return;
   await fetch(`/api/appointments/${id}/cancel`, { method: 'POST' });
   toast('अपॉइंटमेंट रद्द किया गया', 'info');
   loadQueue();
@@ -456,7 +501,15 @@ async function createBill() {
     openModal('billSuccessModal');
     loadPatientBills(currentBillPatientId);
   } else if (result.is_duplicate) {
-    if (confirm(`⚠️ ${result.message}\n\nक्या आप वाकई इस मरीज के लिए दूसरा नया बिल बनाना चाहते हैं?`)) {
+    const ok = await showConfirmDialog({
+      title: 'बिल पहले से मौजूद है',
+      message: `${result.message}\n\nक्या आप वाकई इस मरीज के लिए दूसरा नया बिल बनाना चाहते हैं?`,
+      icon: '🧾',
+      okText: 'हाँ, नया बिल बनाएं',
+      cancelText: 'रद्द करें',
+      okClass: 'btn-warning'
+    });
+    if (ok) {
       data.force_duplicate = true;
       const retryResp = await fetch('/api/bills', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
       const retryResult = await retryResp.json();

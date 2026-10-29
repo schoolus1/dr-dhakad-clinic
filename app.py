@@ -359,10 +359,14 @@ tv_call_state = {'token': None, 'name': '', 'timestamp': 0}
 @login_required
 def call_appointment(aid):
     global tv_call_state
+    a = Appointment.query.get_or_404(aid)
+    if a.status == 'cancelled':
+        return jsonify({'success': False, 'message': 'रद्द किया गया अपॉइंटमेंट कॉल नहीं किया जा सकता (Appointment is Cancelled)'}), 400
+    if a.status == 'completed':
+        return jsonify({'success': False, 'message': 'पूर्ण हो चुके मरीज को कॉल नहीं किया जा सकता (Already Completed)'}), 400
     today = date.today()
     # Reset other in_progress appts to waiting so only 1 patient is active on TV
     Appointment.query.filter(Appointment.appointment_date == today, Appointment.status == 'in_progress', Appointment.id != aid).update({'status': 'waiting'})
-    a = Appointment.query.get_or_404(aid)
     a.status = 'in_progress'
     db.session.commit()
     import time

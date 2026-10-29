@@ -130,15 +130,20 @@ async function loadQueue() {
     el.innerHTML = '<div class="empty-state"><p>आज कोई मरीज नहीं (No patients today)</p></div>';
     return;
   }
-  el.innerHTML = queue.map(a => `
-    <div class="queue-item ${currentApptId === a.id ? 'active' : ''}" onclick="openPatient(${a.id}, ${a.patient_id})">
-      <div class="token-badge">${a.token}</div>
+  el.innerHTML = queue.map(a => {
+    const isCancelled = a.status === 'cancelled';
+    return `
+    <div class="queue-item ${currentApptId === a.id ? 'active' : ''} ${isCancelled ? 'cancelled-item' : ''}" 
+         style="${isCancelled ? 'opacity:0.6;background:#fef2f2;cursor:not-allowed;' : ''}"
+         onclick="${isCancelled ? `toast('⚠️ टोकन #${a.token} (${a.name}) रद्द (Cancelled) हो चुका है', 'error')` : `openPatient(${a.id}, ${a.patient_id})`}">
+      <div class="token-badge" style="${isCancelled ? 'background:#ef4444;color:#fff;' : ''}">${a.token}</div>
       <div class="queue-info">
-        <div class="queue-name">${a.name}</div>
+        <div class="queue-name" style="${isCancelled ? 'text-decoration:line-through;color:#991b1b;' : ''}">${a.name}</div>
         <div class="queue-meta">${a.age || '-'} वर्ष/Y &bull; ${a.gender || '-'} &bull; ${a.mobile}</div>
       </div>
       <span class="badge badge-${a.status.replace('_','-')}">${statusLabel(a.status)}</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function statusLabel(s) {
@@ -285,6 +290,15 @@ async function ringCurrentPatient() {
 }
 
 async function openPatient(apptId, patientId, triggerCall = true) {
+  // Check queue for token and status first
+  const queue = await fetch('/api/queue').then(r => r.json());
+  const appt = queue.find(a => a.id === apptId);
+  if (!appt) return;
+  if (appt.status === 'cancelled') {
+    toast('⚠️ यह अपॉइंटमेंट रद्द (Cancelled) हो चुका है। परामर्श नहीं किया जा सकता।', 'error');
+    return;
+  }
+
   currentApptId = apptId;
   currentPatientId = patientId;
 
@@ -292,11 +306,6 @@ async function openPatient(apptId, patientId, triggerCall = true) {
     fetch(`/api/appointments/${apptId}/call`, { method: 'POST' }).catch(() => {});
   }
   loadQueue(); // refresh highlight
-
-  // Check queue for token
-  const queue = await fetch('/api/queue').then(r => r.json());
-  const appt = queue.find(a => a.id === apptId);
-  if (!appt) return;
 
   // Load patient info
   const p = await fetch(`/api/patients/${patientId}`).then(r => r.json());
