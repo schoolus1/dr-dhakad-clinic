@@ -108,19 +108,17 @@
       color: #dc2626;
     }
 
-    /* Animated ECG line */
+    /* Lightweight GPU ECG Pulse */
     .ecg-pulse {
       width: 90px;
       height: 26px;
+      animation: ecgFade 2s ease-in-out infinite;
+      will-change: opacity;
+      transform: translateZ(0);
     }
-    .ecg-pulse path {
-      stroke-dasharray: 200;
-      stroke-dashoffset: 200;
-      animation: ecgDash 2.4s linear infinite;
-    }
-    @keyframes ecgDash {
-      0% { stroke-dashoffset: 200; }
-      100% { stroke-dashoffset: 0; }
+    @keyframes ecgFade {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
     }
 
     .date-time-widget {
@@ -728,11 +726,13 @@
     }
     .ticker-content {
       display: inline-block;
-      animation: marqueeScroll 28s linear infinite;
+      animation: marqueeScroll 35s linear infinite;
+      will-change: transform;
+      transform: translate3d(0, 0, 0);
     }
     @keyframes marqueeScroll {
-      0% { transform: translateX(100%); }
-      100% { transform: translateX(-100%); }
+      0% { transform: translate3d(100%, 0, 0); }
+      100% { transform: translate3d(-100%, 0, 0); }
     }
 
     /* Audio Enable Floating Prompt */
@@ -1332,8 +1332,11 @@
       speakHindiAnnouncement(announcement);
     }
 
-    // ─── DYNAMIC SERVICES RENDERING ───
+    // ─── DYNAMIC SERVICES RENDERING (Cached) ───
+    let lastRenderedServicesStr = null;
     function renderServices(servicesStr) {
+      if (servicesStr === lastRenderedServicesStr) return;
+      lastRenderedServicesStr = servicesStr;
       const container = document.getElementById('tvServicesContainer');
       if (!container || !servicesStr) return;
       const list = servicesStr.split(',').map(s => s.trim()).filter(Boolean);
@@ -1346,6 +1349,8 @@
     }
 
     // ─── LIVE QUEUE FETCHER ───
+    let lastSettingsJson = '';
+
     async function fetchQueue() {
       try {
         const resp = await fetch('/api/tv/queue');
@@ -1355,63 +1360,67 @@
         const callEvent = res.call_event || null;
         const tvSettings = res.tv_settings || null;
 
-        // 0. UPDATE DYNAMIC SETTINGS FROM DOCTOR PANEL
+        // 0. UPDATE DYNAMIC SETTINGS FROM DOCTOR PANEL (Only when changed)
         if (tvSettings) {
-          if (tvSettings.clinic_name) {
-            const cn = document.getElementById('tvClinicName');
-            if (cn) cn.textContent = tvSettings.clinic_name;
-          }
-          if (tvSettings.doctor_name) {
-            const dn = document.getElementById('docProfileName');
-            if (dn) dn.textContent = tvSettings.doctor_name;
-          }
-          if (tvSettings.doctor_qual) {
-            const dq = document.getElementById('tvDoctorQual');
-            if (dq) dq.textContent = tvSettings.doctor_qual;
-          }
-          if (tvSettings.doctor_role) {
-            const dr = document.getElementById('tvDoctorRole');
-            if (dr) dr.textContent = tvSettings.doctor_role;
-          }
-          if (tvSettings.doctor_bullet1) {
-            const b1 = document.getElementById('tvDocBullet1');
-            if (b1) b1.textContent = tvSettings.doctor_bullet1;
-          }
-          if (tvSettings.doctor_bullet2) {
-            const b2 = document.getElementById('tvDocBullet2');
-            if (b2) b2.textContent = tvSettings.doctor_bullet2;
-          }
-          if (tvSettings.doctor_bullet3) {
-            const b3 = document.getElementById('tvDocBullet3');
-            if (b3) b3.textContent = tvSettings.doctor_bullet3;
-          }
-          if (tvSettings.doctor_bullet4) {
-            const b4 = document.getElementById('tvDocBullet4');
-            if (b4) b4.textContent = tvSettings.doctor_bullet4;
-          }
-          if (tvSettings.tv_timings) {
-            const tt = document.getElementById('tvTimingsTitle');
-            if (tt) tt.textContent = tvSettings.tv_timings;
-          }
-          if (tvSettings.tv_notice) {
-            const nt = document.getElementById('tvNoticeContent');
-            if (nt && nt.textContent.trim() !== tvSettings.tv_notice.trim()) {
-              nt.textContent = tvSettings.tv_notice;
+          const settingsJson = JSON.stringify(tvSettings);
+          if (settingsJson !== lastSettingsJson) {
+            lastSettingsJson = settingsJson;
+            if (tvSettings.clinic_name) {
+              const cn = document.getElementById('tvClinicName');
+              if (cn && cn.textContent !== tvSettings.clinic_name) cn.textContent = tvSettings.clinic_name;
             }
-          }
-          if (tvSettings.tv_services) {
-            renderServices(tvSettings.tv_services);
-          }
-          if (tvSettings.doctor_photo) {
-            const img = document.getElementById('docPhotoImg');
-            const emoji = document.getElementById('docPhotoEmoji');
-            if (img) {
-              if (img.src !== tvSettings.doctor_photo && !img.src.endsWith(tvSettings.doctor_photo)) {
-                img.src = tvSettings.doctor_photo;
+            if (tvSettings.doctor_name) {
+              const dn = document.getElementById('docProfileName');
+              if (dn && dn.textContent !== tvSettings.doctor_name) dn.textContent = tvSettings.doctor_name;
+            }
+            if (tvSettings.doctor_qual) {
+              const dq = document.getElementById('tvDoctorQual');
+              if (dq && dq.textContent !== tvSettings.doctor_qual) dq.textContent = tvSettings.doctor_qual;
+            }
+            if (tvSettings.doctor_role) {
+              const dr = document.getElementById('tvDoctorRole');
+              if (dr && dr.textContent !== tvSettings.doctor_role) dr.textContent = tvSettings.doctor_role;
+            }
+            if (tvSettings.doctor_bullet1) {
+              const b1 = document.getElementById('tvDocBullet1');
+              if (b1 && b1.textContent !== tvSettings.doctor_bullet1) b1.textContent = tvSettings.doctor_bullet1;
+            }
+            if (tvSettings.doctor_bullet2) {
+              const b2 = document.getElementById('tvDocBullet2');
+              if (b2 && b2.textContent !== tvSettings.doctor_bullet2) b2.textContent = tvSettings.doctor_bullet2;
+            }
+            if (tvSettings.doctor_bullet3) {
+              const b3 = document.getElementById('tvDocBullet3');
+              if (b3 && b3.textContent !== tvSettings.doctor_bullet3) b3.textContent = tvSettings.doctor_bullet3;
+            }
+            if (tvSettings.doctor_bullet4) {
+              const b4 = document.getElementById('tvDocBullet4');
+              if (b4 && b4.textContent !== tvSettings.doctor_bullet4) b4.textContent = tvSettings.doctor_bullet4;
+            }
+            if (tvSettings.tv_timings) {
+              const tt = document.getElementById('tvTimingsTitle');
+              if (tt && tt.textContent !== tvSettings.tv_timings) tt.textContent = tvSettings.tv_timings;
+            }
+            if (tvSettings.tv_notice) {
+              const nt = document.getElementById('tvNoticeContent');
+              if (nt && nt.textContent.trim() !== tvSettings.tv_notice.trim()) {
+                nt.textContent = tvSettings.tv_notice;
               }
-              img.style.display = 'block';
             }
-            if (emoji) emoji.style.display = 'none';
+            if (tvSettings.tv_services) {
+              renderServices(tvSettings.tv_services);
+            }
+            if (tvSettings.doctor_photo) {
+              const img = document.getElementById('docPhotoImg');
+              const emoji = document.getElementById('docPhotoEmoji');
+              if (img) {
+                if (img.src !== tvSettings.doctor_photo && !img.src.endsWith(tvSettings.doctor_photo)) {
+                  img.src = tvSettings.doctor_photo;
+                }
+                img.style.display = 'block';
+              }
+              if (emoji) emoji.style.display = 'none';
+            }
           }
         }
 

@@ -167,9 +167,7 @@ async function loadMedicines() {
 }
 
 function renderMedicineSuggestions() {
-  const dl = document.getElementById('medSuggestionsList');
-  if (!dl) return;
-  dl.innerHTML = allMedicines.map(m => `<option value="${m.name}">${m.name} — ${m.dose || ''} (${m.usage_count || 1} बार)</option>`).join('');
+  // Native datalist removed to prevent duplicate dark overlapping popups
 }
 
 function renderQuickChips() {
