@@ -416,6 +416,13 @@ def tv_display():
     clinic_phone = get_setting('clinic_phone', '')
     return render_template('tv.html', clinic_name=clinic_name, doctor_name=doctor_name, clinic_phone=clinic_phone)
 
+@app.route('/tv-prototype')
+def tv_prototype_display():
+    clinic_name = get_setting('clinic_name', 'Dr. Dhakad Clinic')
+    doctor_name = get_setting('doctor_name', 'Dr. Dhakad')
+    clinic_phone = get_setting('clinic_phone', '')
+    return render_template('tv_prototype.html', clinic_name=clinic_name, doctor_name=doctor_name, clinic_phone=clinic_phone)
+
 @app.route('/api/tv/queue', methods=['GET'])
 def get_tv_queue():
     try:
