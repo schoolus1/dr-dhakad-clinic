@@ -14,6 +14,7 @@ import json, os, shutil, requests
 
 app = Flask(__name__)
 app.secret_key = 'dhakad-clinic-secret-2024'
+os.makedirs(app.instance_path, exist_ok=True)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///clinic.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -156,8 +157,11 @@ def role_required(role):
     return decorator
 
 def get_setting(key, default=''):
-    s = Settings.query.filter_by(key=key).first()
-    return s.value if s else default
+    try:
+        s = Settings.query.filter_by(key=key).first()
+        return s.value if s else default
+    except Exception:
+        return default
 
 def set_setting(key, value):
     s = Settings.query.filter_by(key=key).first()
@@ -1005,14 +1009,20 @@ def init_db():
     print("   Reception: username=reception, password=reception123")
 
 
+# Auto-initialize database on startup (runs under both gunicorn and python app.py)
+with app.app_context():
+    try:
+        init_db()
+    except Exception as e:
+        print(f"[WARN] init_db on startup: {e}")
+
+
 if __name__ == '__main__':
     import sys
     import io
     # Fix Windows console encoding
     if sys.stdout.encoding != 'utf-8':
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    with app.app_context():
-        init_db()
     print("\n[START] Dr. Dhakad Clinic Software starting...")
     print("   Open browser: http://localhost:5000")
     print("   Other PCs: http://<this-pc-ip>:5000\n")
