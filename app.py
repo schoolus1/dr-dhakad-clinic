@@ -193,6 +193,10 @@ def next_token():
 # ROUTES: AUTH
 # ─────────────────────────────────────────────
 
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
 @app.route('/')
 def index():
     if 'user_id' in session:
@@ -410,22 +414,40 @@ def call_next_appointment():
     })
 
 def get_tv_settings_dict():
-    return {
-        'clinic_name': get_setting('clinic_name', 'Dr. Dhakad Clinic'),
-        'doctor_name': get_setting('doctor_name', 'Dr. Dhakad'),
-        'clinic_phone': get_setting('clinic_phone', ''),
-        'clinic_address': get_setting('clinic_address', ''),
-        'doctor_qual': get_setting('doctor_qual', 'MBBS, MD (Senior Physician)'),
-        'doctor_role': get_setting('doctor_role', 'जनरल फिजिशियन एवं फैमिली डॉक्टर'),
-        'doctor_photo': get_setting('doctor_photo', ''),
-        'doctor_bullet1': get_setting('doctor_bullet1', 'सामान्य एवं जटिल रोगों का संपूर्ण उपचार'),
-        'doctor_bullet2': get_setting('doctor_bullet2', 'नियमित स्वास्थ्य परीक्षण एवं परामर्श'),
-        'doctor_bullet3': get_setting('doctor_bullet3', 'उचित दवा, खान-पान एवं परहेज मार्गदर्शन'),
-        'doctor_bullet4': get_setting('doctor_bullet4', '15+ वर्षों का समर्पित व विश्वसनीय अनुभव'),
-        'tv_timings': get_setting('tv_timings', 'सुबह: 10:00 - 1:30 | शाम: 5:00 - 8:00 (रवि: अवकाश)'),
-        'tv_notice': get_setting('tv_notice', 'कृपया अपनी पुरानी पर्ची व जांच रिपोर्ट साथ रखें • नया नंबर लगवाने हेतु रिसेप्शन पर संपर्क करें • क्लिनिक का समय: सुबह 10:00 से 1:30 एवं शाम 5:00 से 8:00 तक • Dr. Dhakad Clinic — आपकी सेहत हमारा संकल्प!'),
-        'tv_services': get_setting('tv_services', 'परामर्श (Consultation), ECG जाँच, बीपी / शुगर जाँच, रक्त जाँच (Lab), नेबुलाइजर, दवा परामर्श, फॉलो-अप देखभाल')
-    }
+    try:
+        return {
+            'clinic_name': get_setting('clinic_name', 'Dr. Dhakad Clinic'),
+            'doctor_name': get_setting('doctor_name', 'Dr. Dhakad'),
+            'clinic_phone': get_setting('clinic_phone', ''),
+            'clinic_address': get_setting('clinic_address', ''),
+            'doctor_qual': get_setting('doctor_qual', 'MBBS, MD (Senior Physician)'),
+            'doctor_role': get_setting('doctor_role', 'जनरल फिजिशियन एवं फैमिली डॉक्टर'),
+            'doctor_photo': get_setting('doctor_photo', ''),
+            'doctor_bullet1': get_setting('doctor_bullet1', 'सामान्य एवं जटिल रोगों का संपूर्ण उपचार'),
+            'doctor_bullet2': get_setting('doctor_bullet2', 'नियमित स्वास्थ्य परीक्षण एवं परामर्श'),
+            'doctor_bullet3': get_setting('doctor_bullet3', 'उचित दवा, खान-पान एवं परहेज मार्गदर्शन'),
+            'doctor_bullet4': get_setting('doctor_bullet4', '15+ वर्षों का समर्पित व विश्वसनीय अनुभव'),
+            'tv_timings': get_setting('tv_timings', 'सुबह: 10:00 - 1:30 | शाम: 5:00 - 8:00 (रवि: अवकाश)'),
+            'tv_notice': get_setting('tv_notice', 'कृपया अपनी पुरानी पर्ची व जांच रिपोर्ट साथ रखें • नया नंबर लगवाने हेतु रिसेप्शन पर संपर्क करें • क्लिनिक का समय: सुबह 10:00 से 1:30 एवं शाम 5:00 से 8:00 तक • Dr. Dhakad Clinic — आपकी सेहत हमारा संकल्प!'),
+            'tv_services': get_setting('tv_services', 'परामर्श (Consultation), ECG जाँच, बीपी / शुगर जाँच, रक्त जाँच (Lab), नेबुलाइजर, दवा परामर्श, फॉलो-अप देखभाल')
+        }
+    except Exception:
+        return {
+            'clinic_name': 'Dr. Dhakad Clinic',
+            'doctor_name': 'Dr. Dhakad',
+            'clinic_phone': '',
+            'clinic_address': '',
+            'doctor_qual': 'MBBS, MD (Senior Physician)',
+            'doctor_role': 'जनरल फिजिशियन एवं फैमिली डॉक्टर',
+            'doctor_photo': '',
+            'doctor_bullet1': 'सामान्य एवं जटिल रोगों का संपूर्ण उपचार',
+            'doctor_bullet2': 'नियमित स्वास्थ्य परीक्षण एवं परामर्श',
+            'doctor_bullet3': 'उचित दवा, खान-पान एवं परहेज मार्गदर्शन',
+            'doctor_bullet4': '15+ वर्षों का समर्पित व विश्वसनीय अनुभव',
+            'tv_timings': 'सुबह: 10:00 - 1:30 | शाम: 5:00 - 8:00 (रवि: अवकाश)',
+            'tv_notice': 'कृपया अपनी पुरानी पर्ची व जांच रिपोर्ट साथ रखें • नया नंबर लगवाने हेतु रिसेप्शन पर संपर्क करें • क्लिनिक का समय: सुबह 10:00 से 1:30 एवं शाम 5:00 से 8:00 तक • Dr. Dhakad Clinic — आपकी सेहत हमारा संकल्प!',
+            'tv_services': 'परामर्श (Consultation), ECG जाँच, बीपी / शुगर जाँच, रक्त जाँच (Lab), नेबुलाइजर, दवा परामर्श, फॉलो-अप देखभाल'
+        }
 
 @app.route('/tv')
 def tv_display():
@@ -437,6 +459,7 @@ def tv_prototype_display():
 
 @app.route('/api/tv/queue', methods=['GET'])
 def get_tv_queue():
+    global tv_call_state
     try:
         today = date.today()
         appts = Appointment.query.filter(
@@ -457,13 +480,16 @@ def get_tv_queue():
                 'name': pname,
                 'status': a.status
             })
+        
+        if not isinstance(tv_call_state, dict):
+            tv_call_state = {'token': None, 'name': '', 'timestamp': 0}
+
         if active_appt and not tv_call_state.get('timestamp'):
             import time
-            tv_call_state = {
-                'token': active_appt.token_number,
-                'name': active_appt.patient.name if active_appt.patient else 'मरीज',
-                'timestamp': int(time.time() * 1000)
-            }
+            tv_call_state['token'] = active_appt.token_number
+            tv_call_state['name'] = active_appt.patient.name if active_appt.patient else 'मरीज'
+            tv_call_state['timestamp'] = int(time.time() * 1000)
+
         active_start_time = tv_call_state.get('timestamp') if active_appt else None
         return jsonify({
             'queue': result,
@@ -472,7 +498,16 @@ def get_tv_queue():
             'tv_settings': get_tv_settings_dict()
         })
     except Exception as ex:
-        return jsonify({'queue': [], 'call_event': None, 'error': str(ex)})
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'queue': [],
+            'call_event': tv_call_state if isinstance(tv_call_state, dict) else None,
+            'active_start_time': None,
+            'tv_settings': get_tv_settings_dict(),
+            'error': str(ex)
+        })
 
 
 
