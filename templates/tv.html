@@ -1020,7 +1020,38 @@
     updateClock();
 
     // ─── AUDIO UNLOCK & CONTROLS ───
+    let audioCtx = null;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      return audioCtx;
+    }
+
     function unlockAudioSystem() {
+      try {
+        const ctx = getAudioContext();
+        if (ctx && ctx.state === 'suspended') {
+          ctx.resume();
+        }
+      } catch (e) {
+        console.warn('Audio resume error:', e);
+      }
+
+      // Prime SpeechSynthesis on user gesture
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.resume();
+          const silent = new SpeechSynthesisUtterance(' ');
+          silent.volume = 0.01;
+          window.speechSynthesis.speak(silent);
+        } catch(e){}
+      }
+
       audioUnlocked = true;
       localStorage.setItem('dr_tv_audio_enabled', 'true');
       const prompt = document.getElementById('audioPrompt');
@@ -1028,8 +1059,10 @@
 
       const btn = document.getElementById('audioToggleBtn');
       if (btn) btn.classList.add('on');
-      document.getElementById('audioIcon').textContent = '🔊';
-      document.getElementById('audioText').textContent = 'Sound ON';
+      const icon = document.getElementById('audioIcon');
+      if (icon) icon.textContent = '🔊';
+      const text = document.getElementById('audioText');
+      if (text) text.textContent = 'Sound ON';
 
       // Play pleasant initial chime to confirm audio is active
       playDoubleChime();
@@ -1042,27 +1075,57 @@
       } else {
         audioUnlocked = false;
         localStorage.setItem('dr_tv_audio_enabled', 'false');
+        const prompt = document.getElementById('audioPrompt');
+        if (prompt) prompt.style.display = 'flex';
         const btn = document.getElementById('audioToggleBtn');
         if (btn) btn.classList.remove('on');
-        document.getElementById('audioIcon').textContent = '🔇';
-        document.getElementById('audioText').textContent = 'Sound OFF';
+        const icon = document.getElementById('audioIcon');
+        if (icon) icon.textContent = '🔇';
+        const text = document.getElementById('audioText');
+        if (text) text.textContent = 'Sound OFF';
       }
     }
 
-    // Auto-listen to any key (TV remote OK/Enter/Arrow keys) or click
-    window.addEventListener('click', () => { if (!audioUnlocked) unlockAudioSystem(); }, { once: true });
-    window.addEventListener('keydown', () => { if (!audioUnlocked) unlockAudioSystem(); }, { once: true });
+    // Auto-listen to any key (TV remote OK/Enter/Arrow keys) or click or touch
+    document.addEventListener('click', function onFirstClick() {
+      if (!audioUnlocked) unlockAudioSystem();
+    });
+    document.addEventListener('keydown', function onFirstKey() {
+      if (!audioUnlocked) unlockAudioSystem();
+    });
+    document.addEventListener('touchstart', function onFirstTouch() {
+      if (!audioUnlocked) unlockAudioSystem();
+    });
+
     window.addEventListener('DOMContentLoaded', () => {
       if (localStorage.getItem('dr_tv_audio_enabled') === 'true') {
-        unlockAudioSystem();
+        const ctx = getAudioContext();
+        if (ctx && ctx.state === 'running') {
+          audioUnlocked = true;
+          const prompt = document.getElementById('audioPrompt');
+          if (prompt) prompt.style.display = 'none';
+          const btn = document.getElementById('audioToggleBtn');
+          if (btn) btn.classList.add('on');
+          const icon = document.getElementById('audioIcon');
+          if (icon) icon.textContent = '🔊';
+          const text = document.getElementById('audioText');
+          if (text) text.textContent = 'Sound ON';
+        } else {
+          const prompt = document.getElementById('audioPrompt');
+          if (prompt) prompt.style.display = 'flex';
+        }
       }
     });
 
     // ─── PLEASANT DING-DONG CHIME (Web Audio API) ───
     function playDoubleChime() {
       try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        const ctx = new AudioContext();
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') {
+          ctx.resume().then(() => playDoubleChime()).catch(() => {});
+          return;
+        }
         const t = ctx.currentTime;
 
         // Tone 1: E5 (659Hz)
@@ -1094,30 +1157,38 @@
     }
 
     // ─── HINDI VOICE ANNOUNCEMENT ───
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+
     function speakHindiAnnouncement(phrase) {
       try {
         if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.resume();
         window.speechSynthesis.cancel();
         const utter = new SpeechSynthesisUtterance(phrase);
         utter.lang = 'hi-IN';
-        utter.rate = 0.88;
-        utter.pitch = 1.05;
+        utter.rate = 0.85;
+        utter.pitch = 1.0;
+        utter.volume = 1.0;
 
         // Try to pick Hindi voice if available
         const voices = window.speechSynthesis.getVoices();
-        const hindiVoice = voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi') || v.name.includes('India'));
+        const hindiVoice = voices.find(v => v.lang.startsWith('hi') || v.lang.includes('IN') || v.name.includes('Hindi'));
         if (hindiVoice) utter.voice = hindiVoice;
 
         setTimeout(() => {
+          window.speechSynthesis.resume();
           window.speechSynthesis.speak(utter);
-        }, 700);
+        }, 750);
       } catch (e) {
         console.warn('Speech synthesis warning:', e);
       }
     }
 
     function announceCall(token, patientName) {
-      if (!audioUnlocked) return;
       playDoubleChime();
       const cleanName = (patientName || '').replace(/[\(\)\/\\]/g, ' ');
       const announcement = `टोकन नंबर ${token}, ${cleanName}, कृपया डॉक्टर केबिन में आएं।`;
