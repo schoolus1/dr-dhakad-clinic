@@ -289,21 +289,21 @@
       justify-content: center;
       border-radius: 50%;
       background: radial-gradient(circle, rgba(239, 68, 68, 0.16) 0%, rgba(239, 68, 68, 0.02) 70%);
-      animation: heartbeat 1.6s infinite ease-in-out;
-      box-shadow: 0 0 35px rgba(239, 68, 68, 0.15);
+      animation: heartbeat 2s infinite ease-in-out;
+      transform: translateZ(0);
+      will-change: transform;
     }
     .heart-graphic-pulse svg {
       width: 95px;
       height: 95px;
-      filter: drop-shadow(0 6px 14px rgba(220, 38, 38, 0.35));
     }
 
     @keyframes heartbeat {
-      0%, 100% { transform: scale(1); }
-      14% { transform: scale(1.09); }
-      28% { transform: scale(1); }
-      42% { transform: scale(1.06); }
-      70% { transform: scale(1); }
+      0%, 100% { transform: scale3d(1, 1, 1); }
+      14% { transform: scale3d(1.08, 1.08, 1); }
+      28% { transform: scale3d(1, 1, 1); }
+      42% { transform: scale3d(1.04, 1.04, 1); }
+      70% { transform: scale3d(1, 1, 1); }
     }
 
     .quote-box {
@@ -498,24 +498,25 @@
     .consultation-timer-box {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      background: rgba(0, 0, 0, 0.28);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      border-radius: 30px;
-      padding: 4px 14px;
-      font-size: 1.05rem;
-      font-weight: 700;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 2px solid rgba(134, 239, 172, 0.55);
+      border-radius: 40px;
+      padding: 6px 20px;
+      font-size: 1.25rem;
+      font-weight: 800;
       color: #ffffff;
-      margin-top: 4px;
+      margin: 8px 0;
       width: fit-content;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
     }
     .consultation-timer-box .timer-val {
       font-family: 'Orbitron', monospace;
-      font-weight: 800;
-      color: #86efac;
-      letter-spacing: 1px;
-      font-size: 1.15rem;
+      font-weight: 900;
+      color: #4ade80;
+      letter-spacing: 2px;
+      font-size: 1.85rem;
+      text-shadow: 0 0 12px rgba(74, 222, 128, 0.5);
     }
 
     .token-footer-sub {
@@ -1021,18 +1022,21 @@
     }
 
     // ─── CONSULTATION TIMER LOGIC ───
+    let activeTokenForTimer = null;
+    let consultationElapsedSeconds = 0;
+
     function updateConsultationTimer() {
       const timerEl = document.getElementById('consultationTimer');
       if (!timerEl) return;
 
-      if (!activeConsultationStartTime) {
+      if (activeTokenForTimer === null) {
         timerEl.textContent = '00:00';
         return;
       }
 
-      const diffSecs = Math.max(0, Math.floor((Date.now() - activeConsultationStartTime) / 1000));
-      const m = Math.floor(diffSecs / 60);
-      const s = diffSecs % 60;
+      consultationElapsedSeconds++;
+      const m = Math.floor(consultationElapsedSeconds / 60);
+      const s = consultationElapsedSeconds % 60;
       if (m >= 60) {
         const h = Math.floor(m / 60);
         const remM = m % 60;
@@ -1423,30 +1427,55 @@
 
         // 1. ACTIVE PATIENT (NOW CONSULTING)
         if (active) {
-          activeTokenEl.textContent = `T-${active.token.toString().padStart(3, '0')}`;
-          activePatientEl.textContent = active.name; // FULL NAME without truncation
-          activeConsultationStartTime = res.active_start_time || Date.now();
+          const formattedToken = `T-${active.token.toString().padStart(3, '0')}`;
+          if (activeTokenEl.textContent !== formattedToken) activeTokenEl.textContent = formattedToken;
+          if (activePatientEl.textContent !== active.name) activePatientEl.textContent = active.name;
+
+          // Sync timer only when active patient token changes or on initial fetch
+          if (activeTokenForTimer !== active.token) {
+            activeTokenForTimer = active.token;
+            consultationElapsedSeconds = typeof res.elapsed_seconds === 'number' ? res.elapsed_seconds : 0;
+            const timerEl = document.getElementById('consultationTimer');
+            if (timerEl) {
+              const m = Math.floor(consultationElapsedSeconds / 60);
+              const s = consultationElapsedSeconds % 60;
+              timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            }
+          }
         } else {
-          activeConsultationStartTime = null;
+          activeTokenForTimer = null;
+          consultationElapsedSeconds = 0;
+          const timerEl = document.getElementById('consultationTimer');
+          if (timerEl) timerEl.textContent = '00:00';
+
           if (waitingList.length > 0) {
-            activeTokenEl.textContent = `T-${waitingList[0].token.toString().padStart(3, '0')}`;
-            activePatientEl.textContent = `${waitingList[0].name} (तैयार रहें)`;
+            const nextT = `T-${waitingList[0].token.toString().padStart(3, '0')}`;
+            const nextP = `${waitingList[0].name} (तैयार रहें)`;
+            if (activeTokenEl.textContent !== nextT) activeTokenEl.textContent = nextT;
+            if (activePatientEl.textContent !== nextP) activePatientEl.textContent = nextP;
           } else {
-            activeTokenEl.textContent = '--';
-            activePatientEl.textContent = queue.length > 0 ? 'सभी मरीज पूर्ण ✅ (All Done)' : 'प्रतीक्षारत (Please Wait)';
+            const doneT = '--';
+            const doneP = queue.length > 0 ? 'सभी मरीज पूर्ण ✅ (All Done)' : 'प्रतीक्षारत (Please Wait)';
+            if (activeTokenEl.textContent !== doneT) activeTokenEl.textContent = doneT;
+            if (activePatientEl.textContent !== doneP) activePatientEl.textContent = doneP;
           }
         }
 
         // 2. NEXT PATIENT
         const nextCandidate = active ? waitingList[0] : (waitingList.length > 1 ? waitingList[1] : null);
         if (nextCandidate) {
-          nextTokenEl.textContent = `T-${nextCandidate.token.toString().padStart(3, '0')}`;
-          nextPatientEl.textContent = nextCandidate.name;
-          nextWaitBadge.textContent = `${waitingList.length} प्रतीक्षारत`;
+          const nToken = `T-${nextCandidate.token.toString().padStart(3, '0')}`;
+          const nWait = `${waitingList.length} प्रतीक्षारत`;
+          if (nextTokenEl.textContent !== nToken) nextTokenEl.textContent = nToken;
+          if (nextPatientEl.textContent !== nextCandidate.name) nextPatientEl.textContent = nextCandidate.name;
+          if (nextWaitBadge.textContent !== nWait) nextWaitBadge.textContent = nWait;
         } else {
-          nextTokenEl.textContent = '--';
-          nextPatientEl.textContent = 'कोई अन्य मरीज प्रतीक्षारत नहीं';
-          nextWaitBadge.textContent = '0 प्रतीक्षारत';
+          const noT = '--';
+          const noP = 'कोई अन्य मरीज प्रतीक्षारत नहीं';
+          const noW = '0 प्रतीक्षारत';
+          if (nextTokenEl.textContent !== noT) nextTokenEl.textContent = noT;
+          if (nextPatientEl.textContent !== noP) nextPatientEl.textContent = noP;
+          if (nextWaitBadge.textContent !== noW) nextWaitBadge.textContent = noW;
         }
 
         // 3. SOUND TRIGGER (ON RE-RING OR STATUS CHANGE)

@@ -367,8 +367,12 @@ def call_appointment(aid):
     if a.status == 'cancelled':
         return jsonify({'success': False, 'message': 'रद्द किया गया अपॉइंटमेंट कॉल नहीं किया जा सकता (Appointment is Cancelled)'}), 200
     today = date.today()
-    # Reset other in_progress appts to waiting so only 1 patient is active on TV
-    Appointment.query.filter(Appointment.appointment_date == today, Appointment.status == 'in_progress', Appointment.id != aid).update({'status': 'waiting'})
+    # Previous in_progress appts are marked completed so queue moves forward properly
+    Appointment.query.filter(
+        Appointment.appointment_date == today, 
+        Appointment.status == 'in_progress', 
+        Appointment.id != aid
+    ).update({'status': 'completed'})
     a.status = 'in_progress'
     db.session.commit()
     import time
@@ -393,8 +397,8 @@ def call_next_appointment():
     next_appt = Appointment.query.filter_by(appointment_date=today, status='waiting').order_by(Appointment.token_number).first()
     if not next_appt:
         return jsonify({'success': False, 'message': 'कतार में कोई प्रतीक्षारत मरीज नहीं है (No waiting patients in queue)'}), 404
-    # Reset previous in_progress appts to waiting
-    Appointment.query.filter(Appointment.appointment_date == today, Appointment.status == 'in_progress').update({'status': 'waiting'})
+    # Mark previous in_progress appts as completed so queue advances forward seamlessly
+    Appointment.query.filter(Appointment.appointment_date == today, Appointment.status == 'in_progress').update({'status': 'completed'})
     next_appt.status = 'in_progress'
     db.session.commit()
     import time
@@ -482,17 +486,23 @@ def get_tv_queue():
         if not isinstance(tv_call_state, dict):
             tv_call_state = {'token': None, 'name': '', 'timestamp': 0}
 
-        if active_appt and not tv_call_state.get('timestamp'):
+        elapsed_seconds = 0
+        if active_appt:
             import time
-            tv_call_state['token'] = active_appt.token_number
-            tv_call_state['name'] = active_appt.patient.name if active_appt.patient else 'मरीज'
-            tv_call_state['timestamp'] = int(time.time() * 1000)
+            now_ms = int(time.time() * 1000)
+            if not tv_call_state.get('timestamp') or tv_call_state.get('token') != active_appt.token_number:
+                tv_call_state['token'] = active_appt.token_number
+                tv_call_state['name'] = active_appt.patient.name if active_appt.patient else 'मरीज'
+                tv_call_state['timestamp'] = now_ms
+            start_ts = tv_call_state.get('timestamp', now_ms)
+            elapsed_seconds = max(0, int((now_ms - start_ts) / 1000))
 
         active_start_time = tv_call_state.get('timestamp') if active_appt else None
         return jsonify({
             'queue': result,
             'call_event': tv_call_state,
             'active_start_time': active_start_time,
+            'elapsed_seconds': elapsed_seconds,
             'tv_settings': get_tv_settings_dict()
         })
     except Exception as ex:
