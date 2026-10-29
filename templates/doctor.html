@@ -419,8 +419,84 @@
           <div style="background:var(--primary-light);border-radius:8px;padding:12px;margin-bottom:16px;font-size:0.85rem;">
             💡 WhatsApp Business API के बिना भी काम करेगा — wa.me लिंक खुलेगा। API मुफ्त में मिलती है: <a href="https://developers.facebook.com/docs/whatsapp" target="_blank">Meta Developers</a>
           </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-primary" onclick="saveSettings()">💾 सेव करें</button>
+
+          <hr class="divider">
+          <div class="card-title mb-2" style="color:var(--primary);display:flex;align-items:center;gap:8px;">
+            <span>📺</span> स्मार्ट टीवी डिस्प्ले कस्टमाइज़ेशन (Smart TV Customization)
+          </div>
+          <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px;margin-bottom:16px;font-size:0.85rem;color:#0369a1;">
+            💡 यहाँ जो भी जानकारी आप भरेंगे, वह स्मार्ट टीवी स्क्रीन पर तुरंत लाइव दिखेगी।
+          </div>
+
+          <!-- Doctor Photo Upload & Preview -->
+          <div class="form-row mb-2">
+            <div class="form-group" style="flex:0 0 100px;">
+              <label class="form-label">डॉक्टर फोटो</label>
+              <div id="tvDocPhotoPreview" style="width:80px;height:80px;border-radius:12px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:36px;overflow:hidden;border:2px solid var(--border);">
+                👨‍⚕️
+              </div>
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label class="form-label">फोटो अपलोड करें / बदलें</label>
+              <input type="file" class="form-control" id="set_doc_photo_file" accept="image/*" onchange="uploadDoctorPhoto(this)">
+              <input type="hidden" id="set_doctor_photo">
+              <span class="text-small text-muted">साफ पासपोर्ट साइज या सफेद कोट में फोटो चुनें (PNG / JPG)</span>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">डॉक्टर की डिग्री / उपाधि (Degree)</label>
+              <input type="text" class="form-control" id="set_doctor_qual" placeholder="उदा: MBBS, MD (Medicine) - Senior Physician">
+            </div>
+            <div class="form-group">
+              <label class="form-label">पद / विशेषता (Role / Designation)</label>
+              <input type="text" class="form-control" id="set_doctor_role" placeholder="उदा: जनरल फिजिशियन एवं फैमिली डॉक्टर">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">विशेषता 1 (Bullet 1)</label>
+              <input type="text" class="form-control" id="set_doctor_bullet1" placeholder="उदा: सामान्य एवं जटिल रोगों का संपूर्ण उपचार">
+            </div>
+            <div class="form-group">
+              <label class="form-label">विशेषता 2 (Bullet 2)</label>
+              <input type="text" class="form-control" id="set_doctor_bullet2" placeholder="उदा: नियमित स्वास्थ्य परीक्षण एवं परामर्श">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">विशेषता 3 (Bullet 3)</label>
+              <input type="text" class="form-control" id="set_doctor_bullet3" placeholder="उदा: उचित दवा, खान-पान एवं परहेज मार्गदर्शन">
+            </div>
+            <div class="form-group">
+              <label class="form-label">विशेषता 4 (Bullet 4)</label>
+              <input type="text" class="form-control" id="set_doctor_bullet4" placeholder="उदा: 15+ वर्षों का समर्पित व विश्वसनीय अनुभव">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">क्लिनिक का समय (Working Hours on TV)</label>
+              <input type="text" class="form-control" id="set_tv_timings" placeholder="उदा: सुबह: 10:00 - 1:30 | शाम: 5:00 - 8:00 (रवि: अवकाश)">
+            </div>
+          </div>
+
+          <div class="form-group mb-2">
+            <label class="form-label">नीचे चलने वाली महत्वपूर्ण सूचना (Scrolling Marquee Notice on TV)</label>
+            <textarea class="form-control" id="set_tv_notice" rows="2" placeholder="सूचना लिखें जो टीवी स्क्रीन के नीचे लाल पट्टी पर स्क्रॉल होगी..."></textarea>
+          </div>
+
+          <div class="form-group mb-2">
+            <label class="form-label">प्रमुख सेवाएँ (Bottom Services - कॉमा से अलग करें)</label>
+            <input type="text" class="form-control" id="set_tv_services" placeholder="परामर्श (Consultation), ECG जाँच, बीपी / शुगर जाँच, रक्त जाँच (Lab), नेबुलाइजर, दवा परामर्श, फॉलो-अप देखभाल">
+          </div>
+
+          <div class="d-flex gap-2 mt-2">
+            <button class="btn btn-primary" onclick="saveSettings()">💾 सभी सेटिंग्स सेव करें</button>
+            <a href="/tv" target="_blank" class="btn btn-outline" style="text-decoration:none;">📺 टीवी स्क्रीन देखें</a>
             <button class="btn btn-outline" onclick="createBackup()">🗂️ बैकअप बनाएं</button>
           </div>
         </div>

@@ -409,19 +409,31 @@ def call_next_appointment():
         'patient_id': next_appt.patient_id
     })
 
+def get_tv_settings_dict():
+    return {
+        'clinic_name': get_setting('clinic_name', 'Dr. Dhakad Clinic'),
+        'doctor_name': get_setting('doctor_name', 'Dr. Dhakad'),
+        'clinic_phone': get_setting('clinic_phone', ''),
+        'clinic_address': get_setting('clinic_address', ''),
+        'doctor_qual': get_setting('doctor_qual', 'MBBS, MD (Senior Physician)'),
+        'doctor_role': get_setting('doctor_role', 'जनरल फिजिशियन एवं फैमिली डॉक्टर'),
+        'doctor_photo': get_setting('doctor_photo', ''),
+        'doctor_bullet1': get_setting('doctor_bullet1', 'सामान्य एवं जटिल रोगों का संपूर्ण उपचार'),
+        'doctor_bullet2': get_setting('doctor_bullet2', 'नियमित स्वास्थ्य परीक्षण एवं परामर्श'),
+        'doctor_bullet3': get_setting('doctor_bullet3', 'उचित दवा, खान-पान एवं परहेज मार्गदर्शन'),
+        'doctor_bullet4': get_setting('doctor_bullet4', '15+ वर्षों का समर्पित व विश्वसनीय अनुभव'),
+        'tv_timings': get_setting('tv_timings', 'सुबह: 10:00 - 1:30 | शाम: 5:00 - 8:00 (रवि: अवकाश)'),
+        'tv_notice': get_setting('tv_notice', 'कृपया अपनी पुरानी पर्ची व जांच रिपोर्ट साथ रखें • नया नंबर लगवाने हेतु रिसेप्शन पर संपर्क करें • क्लिनिक का समय: सुबह 10:00 से 1:30 एवं शाम 5:00 से 8:00 तक • Dr. Dhakad Clinic — आपकी सेहत हमारा संकल्प!'),
+        'tv_services': get_setting('tv_services', 'परामर्श (Consultation), ECG जाँच, बीपी / शुगर जाँच, रक्त जाँच (Lab), नेबुलाइजर, दवा परामर्श, फॉलो-अप देखभाल')
+    }
+
 @app.route('/tv')
 def tv_display():
-    clinic_name = get_setting('clinic_name', 'Dr. Dhakad Clinic')
-    doctor_name = get_setting('doctor_name', 'Dr. Dhakad')
-    clinic_phone = get_setting('clinic_phone', '')
-    return render_template('tv.html', clinic_name=clinic_name, doctor_name=doctor_name, clinic_phone=clinic_phone)
+    return render_template('tv_prototype.html', **get_tv_settings_dict())
 
 @app.route('/tv-prototype')
 def tv_prototype_display():
-    clinic_name = get_setting('clinic_name', 'Dr. Dhakad Clinic')
-    doctor_name = get_setting('doctor_name', 'Dr. Dhakad')
-    clinic_phone = get_setting('clinic_phone', '')
-    return render_template('tv_prototype.html', clinic_name=clinic_name, doctor_name=doctor_name, clinic_phone=clinic_phone)
+    return render_template('tv_prototype.html', **get_tv_settings_dict())
 
 @app.route('/api/tv/queue', methods=['GET'])
 def get_tv_queue():
@@ -432,7 +444,10 @@ def get_tv_queue():
             Appointment.status != 'cancelled'
         ).order_by(Appointment.token_number).all()
         result = []
+        active_appt = None
         for a in appts:
+            if a.status == 'in_progress':
+                active_appt = a
             try:
                 pname = a.patient.name if a.patient else 'मरीज'
             except Exception:
@@ -442,9 +457,19 @@ def get_tv_queue():
                 'name': pname,
                 'status': a.status
             })
+        if active_appt and not tv_call_state.get('timestamp'):
+            import time
+            tv_call_state = {
+                'token': active_appt.token_number,
+                'name': active_appt.patient.name if active_appt.patient else 'मरीज',
+                'timestamp': int(time.time() * 1000)
+            }
+        active_start_time = tv_call_state.get('timestamp') if active_appt else None
         return jsonify({
             'queue': result,
-            'call_event': tv_call_state
+            'call_event': tv_call_state,
+            'active_start_time': active_start_time,
+            'tv_settings': get_tv_settings_dict()
         })
     except Exception as ex:
         return jsonify({'queue': [], 'call_event': None, 'error': str(ex)})
@@ -917,13 +942,38 @@ def whatsapp_logs():
 @login_required
 def settings():
     if request.method == 'POST':
-        data = request.json
+        data = request.json or {}
         for k, v in data.items():
             set_setting(k, v)
         return jsonify({'success': True})
-    keys = ['clinic_name', 'doctor_name', 'clinic_address', 'clinic_phone',
-            'consultation_fee', 'wa_token', 'wa_phone_id']
-    return jsonify({k: get_setting(k) for k in keys})
+    
+    all_settings = get_tv_settings_dict()
+    all_settings['consultation_fee'] = get_setting('consultation_fee', '300')
+    all_settings['wa_token'] = get_setting('wa_token', '')
+    all_settings['wa_phone_id'] = get_setting('wa_phone_id', '')
+    return jsonify(all_settings)
+
+@app.route('/api/upload/doctor-photo', methods=['POST'])
+@login_required
+def upload_doctor_photo():
+    import time
+    if 'photo' not in request.files:
+        return jsonify({'success': False, 'message': 'कोई फोटो फाइल नहीं मिली'}), 400
+    file = request.files['photo']
+    if not file or file.filename == '':
+        return jsonify({'success': False, 'message': 'फाइल का चयन करें'}), 400
+    
+    upload_dir = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'jpg'
+    filename = f'doctor_photo_{int(time.time())}.{ext}'
+    filepath = os.path.join(upload_dir, filename)
+    file.save(filepath)
+    
+    photo_url = f'/static/uploads/{filename}'
+    set_setting('doctor_photo', photo_url)
+    return jsonify({'success': True, 'photo_url': photo_url})
 
 @app.route('/api/backup', methods=['POST'])
 @login_required

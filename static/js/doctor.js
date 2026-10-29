@@ -669,6 +669,55 @@ async function loadSettings() {
   document.getElementById('set_fee').value = s.consultation_fee || '';
   document.getElementById('set_wa_token').value = s.wa_token || '';
   document.getElementById('set_wa_phone_id').value = s.wa_phone_id || '';
+
+  // TV Screen Customization settings
+  if (document.getElementById('set_doctor_qual')) document.getElementById('set_doctor_qual').value = s.doctor_qual || '';
+  if (document.getElementById('set_doctor_role')) document.getElementById('set_doctor_role').value = s.doctor_role || '';
+  if (document.getElementById('set_doctor_photo')) {
+    document.getElementById('set_doctor_photo').value = s.doctor_photo || '';
+    const prev = document.getElementById('tvDocPhotoPreview');
+    if (prev && s.doctor_photo) {
+      prev.src = s.doctor_photo;
+      prev.style.display = 'block';
+    }
+  }
+  if (document.getElementById('set_doctor_bullet1')) document.getElementById('set_doctor_bullet1').value = s.doctor_bullet1 || '';
+  if (document.getElementById('set_doctor_bullet2')) document.getElementById('set_doctor_bullet2').value = s.doctor_bullet2 || '';
+  if (document.getElementById('set_doctor_bullet3')) document.getElementById('set_doctor_bullet3').value = s.doctor_bullet3 || '';
+  if (document.getElementById('set_doctor_bullet4')) document.getElementById('set_doctor_bullet4').value = s.doctor_bullet4 || '';
+  if (document.getElementById('set_tv_timings')) document.getElementById('set_tv_timings').value = s.tv_timings || '';
+  if (document.getElementById('set_tv_notice')) document.getElementById('set_tv_notice').value = s.tv_notice || '';
+  if (document.getElementById('set_tv_services')) document.getElementById('set_tv_services').value = s.tv_services || '';
+}
+
+async function uploadDoctorPhoto(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const formData = new FormData();
+  formData.append('photo', file);
+
+  try {
+    toast('⏳ फोटो अपलोड हो रही है...');
+    const resp = await fetch('/api/upload/doctor-photo', {
+      method: 'POST',
+      body: formData
+    });
+    const res = await resp.json();
+    if (res.success && res.photo_url) {
+      document.getElementById('set_doctor_photo').value = res.photo_url;
+      const prev = document.getElementById('tvDocPhotoPreview');
+      if (prev) {
+        prev.src = res.photo_url;
+        prev.style.display = 'block';
+      }
+      toast('✅ डॉक्टर की फोटो सफलता से अपलोड हो गई!');
+    } else {
+      toast(res.message || 'फोटो अपलोड विफल रहा', 'error');
+    }
+  } catch (err) {
+    console.error('Photo upload error:', err);
+    toast('फोटो अपलोड करने में त्रुटि आई', 'error');
+  }
 }
 
 async function saveSettings() {
@@ -679,10 +728,20 @@ async function saveSettings() {
     clinic_phone: document.getElementById('set_phone').value,
     consultation_fee: document.getElementById('set_fee').value,
     wa_token: document.getElementById('set_wa_token').value,
-    wa_phone_id: document.getElementById('set_wa_phone_id').value
+    wa_phone_id: document.getElementById('set_wa_phone_id').value,
+    doctor_qual: document.getElementById('set_doctor_qual') ? document.getElementById('set_doctor_qual').value : '',
+    doctor_role: document.getElementById('set_doctor_role') ? document.getElementById('set_doctor_role').value : '',
+    doctor_photo: document.getElementById('set_doctor_photo') ? document.getElementById('set_doctor_photo').value : '',
+    doctor_bullet1: document.getElementById('set_doctor_bullet1') ? document.getElementById('set_doctor_bullet1').value : '',
+    doctor_bullet2: document.getElementById('set_doctor_bullet2') ? document.getElementById('set_doctor_bullet2').value : '',
+    doctor_bullet3: document.getElementById('set_doctor_bullet3') ? document.getElementById('set_doctor_bullet3').value : '',
+    doctor_bullet4: document.getElementById('set_doctor_bullet4') ? document.getElementById('set_doctor_bullet4').value : '',
+    tv_timings: document.getElementById('set_tv_timings') ? document.getElementById('set_tv_timings').value : '',
+    tv_notice: document.getElementById('set_tv_notice') ? document.getElementById('set_tv_notice').value : '',
+    tv_services: document.getElementById('set_tv_services') ? document.getElementById('set_tv_services').value : ''
   };
   await fetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
-  toast('✅ सेटिंग्स सेव हो गईं!');
+  toast('✅ टीवी और क्लिनिक सेटिंग्स सेव हो गईं!');
 }
 
 async function createBackup() {

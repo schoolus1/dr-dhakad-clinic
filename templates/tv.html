@@ -3,570 +3,1269 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live TV Token Display - {{ clinic_name }}</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap">
+  <title>Smart TV Token Display — {{ clinic_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --primary-blue: #0056b3;
+      --primary-navy: #0f172a;
+      --primary-red: #dc2626;
+      --accent-cyan: #0284c7;
+      --accent-green: #16a34a;
+      --bg-light: #f8fafc;
+      --surface: #ffffff;
+      --border-color: #e2e8f0;
+      --text-dark: #0f172a;
+      --text-muted: #64748b;
+    }
+
     * { margin:0; padding:0; box-sizing:border-box; }
-    body {
-      font-family: 'Outfit', sans-serif;
-      background: #0b0f19;
-      color: #fff;
+    html, body {
+      width: 100vw;
       height: 100vh;
       overflow: hidden;
-      display: flex;
-      flex-direction: column;
+      font-family: 'Noto Sans Devanagari', 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-light);
+      color: var(--text-dark);
+      user-select: none;
     }
 
-    /* Top Bar */
-    .tv-header {
-      background: linear-gradient(90deg, #131d36 0%, #0d1527 100%);
-      border-bottom: 2px solid #1e2d4d;
-      padding: 16px 36px;
+    .tv-screen {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      padding: 14px 20px 8px 20px;
+      gap: 12px;
+      background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
     }
-    .tv-brand {
+
+    /* ─── TOP HEADER BAR ─── */
+    .top-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 10px 24px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      border: 1px solid var(--border-color);
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .clinic-logo {
+      width: 54px;
+      height: 54px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #ef4444 0%, #0284c7 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 28px;
+      box-shadow: 0 4px 10px rgba(220, 38, 38, 0.25);
+    }
+
+    .clinic-info h1 {
+      font-size: 1.65rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+      text-transform: uppercase;
+    }
+
+    .clinic-info p {
+      font-size: 0.85rem;
+      color: #0284c7;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .tagline-pulse {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 50px;
+      padding: 8px 22px;
+    }
+
+    .tagline-text {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #166534;
+    }
+    .tagline-text span {
+      color: #dc2626;
+    }
+
+    /* Animated ECG line */
+    .ecg-pulse {
+      width: 90px;
+      height: 26px;
+    }
+    .ecg-pulse path {
+      stroke-dasharray: 200;
+      stroke-dashoffset: 200;
+      animation: ecgDash 2.4s linear infinite;
+    }
+    @keyframes ecgDash {
+      0% { stroke-dashoffset: 200; }
+      100% { stroke-dashoffset: 0; }
+    }
+
+    .date-time-widget {
       display: flex;
       align-items: center;
       gap: 16px;
     }
-    .tv-brand-icon {
-      width: 52px; height: 52px;
-      background: linear-gradient(135deg, #1a73e8, #00d2ff);
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.8rem;
-      box-shadow: 0 0 20px rgba(0, 210, 255, 0.4);
-    }
-    .tv-brand h1 {
-      font-size: 1.8rem;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      background: linear-gradient(90deg, #ffffff, #a5c7ff);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .tv-brand span {
-      font-size: 0.95rem;
-      color: #7d93b8;
-      font-weight: 600;
-    }
 
-    .tv-clock-box {
+    .date-box {
       text-align: right;
     }
-    .tv-time {
-      font-size: 2.2rem;
-      font-weight: 800;
-      letter-spacing: 1px;
-      color: #00d2ff;
-      text-shadow: 0 0 15px rgba(0, 210, 255, 0.4);
-    }
-    .tv-date {
+    .date-box .date-day {
       font-size: 0.95rem;
-      color: #8da2c4;
-      font-weight: 600;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    .date-box .date-sub {
+      font-size: 0.8rem;
+      color: #64748b;
     }
 
-    /* Main Grid */
-    .tv-body {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 1.25fr 1fr;
-      gap: 24px;
-      padding: 24px 36px;
-      overflow: hidden;
-    }
-
-    /* Left Spotlight Card (Current Token) */
-    .spotlight-card {
-      background: linear-gradient(145deg, #131e38 0%, #0e1628 100%);
-      border: 2px solid #00d2ff;
-      border-radius: 24px;
-      padding: 32px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      position: relative;
-      box-shadow: 0 0 40px rgba(0, 210, 255, 0.2);
-    }
-    .now-serving-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      background: rgba(0, 230, 118, 0.15);
-      border: 1px solid #00e676;
-      color: #00e676;
-      padding: 8px 24px;
-      border-radius: 30px;
-      font-size: 1.1rem;
+    /* DIGITAL CLOCK */
+    .time-badge {
+      background: #090d16;
+      color: #38bdf8;
+      border: 2px solid #1e293b;
+      padding: 8px 18px;
+      border-radius: 12px;
+      font-family: 'Orbitron', monospace;
+      font-size: 1.45rem;
       font-weight: 800;
       letter-spacing: 1.5px;
-      text-transform: uppercase;
-      animation: pulse 2s infinite;
-      margin-bottom: 24px;
-    }
-    .pulse-dot {
-      width: 12px; height: 12px;
-      background: #00e676;
-      border-radius: 50%;
-      box-shadow: 0 0 10px #00e676;
-    }
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.05); opacity: 0.85; }
-    }
-
-    .spotlight-token {
-      font-size: 7.5rem;
-      font-weight: 900;
-      line-height: 1;
-      letter-spacing: -2px;
-      color: #fff;
-      text-shadow: 0 0 30px rgba(0, 210, 255, 0.6);
-      margin-bottom: 12px;
-    }
-    .spotlight-name {
-      font-size: 2.6rem;
-      font-weight: 800;
-      color: #f1f5f9;
-      margin-bottom: 12px;
-      max-width: 90%;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .spotlight-cabin {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.3rem;
-      color: #7dd3fc;
-      background: rgba(125, 211, 252, 0.1);
-      padding: 8px 20px;
-      border-radius: 12px;
-      border: 1px solid rgba(125, 211, 252, 0.2);
-    }
-
-    /* Right Queue List */
-    .queue-card {
-      background: linear-gradient(145deg, #131d36 0%, #0d1527 100%);
-      border: 1px solid #1e2d4d;
-      border-radius: 24px;
-      padding: 24px 28px;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    }
-    .queue-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #1e2d4d;
-      padding-bottom: 16px;
-      margin-bottom: 16px;
-    }
-    .queue-card-title {
-      font-size: 1.35rem;
-      font-weight: 800;
-      color: #f8fafc;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.6), 0 0 15px rgba(56, 189, 248, 0.2);
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 3px;
     }
-    .queue-card-badge {
-      background: #1e3a8a;
-      color: #93c5fd;
-      padding: 4px 14px;
-      border-radius: 20px;
-      font-size: 0.95rem;
-      font-weight: 700;
-    }
-
-    .queue-list-items {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      overflow-y: auto;
-    }
-    .queue-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 16px;
-      padding: 12px 18px;
-      transition: all 0.3s ease;
-    }
-    .queue-row:first-child {
-      background: rgba(234, 179, 8, 0.1);
-      border-color: rgba(234, 179, 8, 0.4);
-    }
-    .queue-row-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .queue-token-pill {
-      font-size: 1.5rem;
-      font-weight: 900;
-      color: #00d2ff;
-      background: rgba(0, 210, 255, 0.12);
-      border-radius: 12px;
-      padding: 4px 14px;
-      min-width: 60px;
-      text-align: center;
-    }
-    .queue-row:first-child .queue-token-pill {
-      color: #facc15;
-      background: rgba(250, 204, 21, 0.15);
-    }
-    .queue-row-name {
-      font-size: 1.35rem;
-      font-weight: 700;
-      color: #f1f5f9;
-    }
-    .queue-row-status {
-      font-size: 0.95rem;
-      font-weight: 700;
-      padding: 6px 14px;
-      border-radius: 20px;
-      background: rgba(148, 163, 184, 0.15);
-      color: #cbd5e1;
-    }
-    .queue-row:first-child .queue-row-status {
-      background: rgba(234, 179, 8, 0.2);
-      color: #fde047;
-      border: 1px solid rgba(234, 179, 8, 0.4);
-    }
-
-    /* Bottom Ticker */
-    .tv-ticker {
-      background: #060911;
-      border-top: 1px solid #1e293b;
-      padding: 12px 36px;
-      display: flex;
-      align-items: center;
-      overflow: hidden;
-      white-space: nowrap;
-    }
-    .ticker-label {
-      background: #ef4444;
-      color: #fff;
-      font-size: 0.85rem;
-      font-weight: 800;
-      padding: 4px 12px;
-      border-radius: 6px;
-      margin-right: 16px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    .ticker-text {
+    .time-badge .colon {
+      animation: blinkColon 1s infinite;
+      color: #38bdf8;
       display: inline-block;
-      animation: marquee 25s linear infinite;
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: #94a3b8;
     }
-    @keyframes marquee {
-      0% { transform: translateX(100%); }
-      100% { transform: translateX(-100%); }
+    @keyframes blinkColon {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0.2; }
+    }
+    .time-badge .seconds {
+      font-size: 0.95rem;
+      color: #f59e0b;
+      margin-left: 2px;
+    }
+    .time-badge .ampm {
+      font-size: 0.75rem;
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 2px 6px;
+      border-radius: 6px;
+      margin-left: 6px;
+      letter-spacing: 0.5px;
     }
 
     .audio-btn {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.15);
-      color: #94a3b8;
-      border-radius: 8px;
-      padding: 6px 12px;
+      background: #e2e8f0;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 10px;
       font-size: 0.85rem;
+      font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 6px;
+      color: #475569;
+      transition: all 0.2s;
     }
     .audio-btn.on {
-      color: #00e676;
-      border-color: #00e676;
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+
+    /* ─── MAIN 3-COLUMN CONTENT ─── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 1.35fr 1.45fr;
+      gap: 16px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* COLUMN 1: Welcome & Health Vision */
+    .welcome-card {
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 24px 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .welcome-card::before {
+      content: '';
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(2, 132, 199, 0.08) 0%, transparent 70%);
+    }
+
+    .welcome-heading h2 {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.15;
+    }
+    .welcome-heading h2 span {
+      color: #dc2626;
+      display: block;
+    }
+
+    .welcome-sub {
+      font-size: 1.05rem;
+      color: #475569;
+      margin-top: 8px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    .heart-art-center {
+      text-align: center;
+      margin: 12px 0;
+    }
+
+    .heart-graphic-pulse {
+      width: 150px;
+      height: 150px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(239, 68, 68, 0.16) 0%, rgba(239, 68, 68, 0.02) 70%);
+      animation: heartbeat 1.6s infinite ease-in-out;
+      box-shadow: 0 0 35px rgba(239, 68, 68, 0.15);
+    }
+    .heart-graphic-pulse svg {
+      width: 95px;
+      height: 95px;
+      filter: drop-shadow(0 6px 14px rgba(220, 38, 38, 0.35));
+    }
+
+    @keyframes heartbeat {
+      0%, 100% { transform: scale(1); }
+      14% { transform: scale(1.09); }
+      28% { transform: scale(1); }
+      42% { transform: scale(1.06); }
+      70% { transform: scale(1); }
+    }
+
+    .quote-box {
+      background: #fff7ed;
+      border-left: 4px solid #ea580c;
+      padding: 12px 16px;
+      border-radius: 8px;
+    }
+    .quote-box p {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #9a3412;
+      line-height: 1.35;
+    }
+
+    /* COLUMN 2: Doctor Profile */
+    .doctor-card {
+      background: var(--surface);
+      border-radius: 20px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+      position: relative;
+    }
+
+    .doctor-header-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .doctor-avatar-box {
+      width: 95px;
+      height: 95px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+      border: 3px solid #ffffff;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 46px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .doctor-meta-info h3 {
+      font-size: 1.55rem;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+    .doctor-meta-info .doc-qual {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #0284c7;
+      margin-top: 3px;
+    }
+    .doctor-meta-info .doc-role {
+      font-size: 0.85rem;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .doctor-divider {
+      width: 48px;
+      height: 3px;
+      background: #dc2626;
+      border-radius: 2px;
+      margin: 4px 0 12px 0;
+    }
+
+    .doctor-bullets {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .bullet-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+    }
+    .bullet-icon {
+      font-size: 20px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      flex-shrink: 0;
+    }
+    .bullet-text {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    /* COLUMN 3: Live Queue Cards */
+    .queue-column {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Active Consulting Card (Red Accent) */
+    .token-card-active {
+      background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
+      border-radius: 20px;
+      padding: 18px 24px;
+      color: #ffffff;
+      box-shadow: 0 10px 25px rgba(220, 38, 38, 0.35);
+      position: relative;
+      overflow: hidden;
+      flex: 1.25;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.3s;
+    }
+
+    .token-card-active.new-ring {
+      animation: callPulse 1.2s ease-in-out infinite;
+    }
+    @keyframes callPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 10px 25px rgba(220, 38, 38, 0.35); }
+      50% { transform: scale(1.02); box-shadow: 0 14px 35px rgba(220, 38, 38, 0.6); }
+    }
+
+    .token-header-tag {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .token-header-tag .label {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .token-header-tag .live-dot {
+      width: 10px;
+      height: 10px;
+      background: #4ade80;
+      border-radius: 50%;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .token-main-number {
+      font-family: 'Plus Jakarta Sans', monospace;
+      font-size: 4.5rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+      margin: 4px 0 2px 0;
+      text-shadow: 0 4px 10px rgba(0,0,0,0.25);
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    /* Patient name: EXTRA LARGE, FULL NAME WITH WORD-WRAP (NO CUTOFF) */
+    .patient-callout-name {
+      font-size: 2.35rem;
+      font-weight: 900;
+      color: #fef08a;
+      line-height: 1.25;
+      margin: 4px 0 6px 0;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    }
+
+    /* RUNNING CONSULTATION TIMER */
+    .consultation-timer-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 30px;
+      padding: 4px 14px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 4px;
+      width: fit-content;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .consultation-timer-box .timer-val {
+      font-family: 'Orbitron', monospace;
+      font-weight: 800;
+      color: #86efac;
+      letter-spacing: 1px;
+      font-size: 1.15rem;
+    }
+
+    .token-footer-sub {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 6px;
+    }
+
+    /* Next Token Card (Cyan Accent) */
+    .token-card-next {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 14px 20px;
+      border: 2px solid #bae6fd;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08);
+      flex: 0.9;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .next-tag-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .next-tag-row .label {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #0369a1;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .next-token-number {
+      font-family: 'Plus Jakarta Sans', monospace;
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: #0284c7;
+      line-height: 1;
+      margin: 2px 0;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .next-patient-name {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #1e293b;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .next-sub-hint {
+      font-size: 0.85rem;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    /* Doctor Status & Timings Pill Row */
+    .status-timings-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 10px;
+    }
+
+    .status-pill {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 14px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-pill .icon {
+      font-size: 22px;
+    }
+    .status-pill .title {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: #15803d;
+      line-height: 1.2;
+    }
+    .status-pill .desc {
+      font-size: 0.72rem;
+      color: #166534;
+      font-weight: 600;
+    }
+
+    .timings-pill {
+      background: #f8fafc;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .timings-pill .icon {
+      font-size: 20px;
+      color: #0284c7;
+    }
+    .timings-pill .title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #1e293b;
+      line-height: 1.2;
+    }
+    .timings-pill .desc {
+      font-size: 0.72rem;
+      color: #dc2626;
+      font-weight: 700;
+    }
+
+    /* ─── BOTTOM SERVICES ROW ─── */
+    .services-bar {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 10px 18px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .services-title-badge {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #0f172a;
+      white-space: nowrap;
+      border-right: 2px solid var(--border-color);
+      padding-right: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .services-carousel {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    .service-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 6px 12px;
+      flex: 1;
+      justify-content: center;
+    }
+    .service-chip .icon {
+      font-size: 18px;
+    }
+    .service-chip .name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #334155;
+      white-space: nowrap;
+    }
+
+    /* ─── BOTTOM TICKER ─── */
+    .bottom-ticker {
+      display: flex;
+      align-items: center;
+      background: #dc2626;
+      color: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(220, 38, 38, 0.2);
+      height: 38px;
+    }
+
+    .ticker-badge {
+      background: #991b1b;
+      padding: 0 16px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+      gap: 6px;
+      white-space: nowrap;
+      letter-spacing: 0.3px;
+    }
+
+    .ticker-marquee {
+      flex: 1;
+      overflow: hidden;
+      white-space: nowrap;
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding-left: 20px;
+    }
+    .ticker-content {
+      display: inline-block;
+      animation: marqueeScroll 28s linear infinite;
+    }
+    @keyframes marqueeScroll {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    /* Audio Enable Floating Prompt */
+    .audio-banner-prompt {
+      position: fixed;
+      top: 18px;
+      right: 20px;
+      background: #ea580c;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 50px;
+      font-size: 0.92rem;
+      font-weight: 700;
+      box-shadow: 0 8px 25px rgba(234, 88, 12, 0.4);
+      cursor: pointer;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: bouncePrompt 2s infinite;
+    }
+    @keyframes bouncePrompt {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
     }
   </style>
 </head>
 <body>
 
-  <!-- Top Header -->
-  <header class="tv-header">
-    <div class="tv-brand">
-      <div class="tv-brand-icon">🏥</div>
-      <div>
-        <h1>{{ clinic_name }}</h1>
-        <span>{{ doctor_name }} &bull; ओपीडी कतार एवं टोकन डिस्प्ले (Live Token Display)</span>
-      </div>
-    </div>
-    <div class="tv-clock-box">
-      <div class="tv-time" id="clockTime">--:--:--</div>
-      <div class="tv-date" id="clockDate">--</div>
-    </div>
-  </header>
+  <!-- Audio Prompt (Disappears on first interaction) -->
+  <div class="audio-banner-prompt" id="audioPrompt" onclick="unlockAudioSystem()">
+    <span>🔔</span>
+    <span>साउंड चालू करने के लिए यहाँ क्लिक करें (Click to Enable TV Voice)</span>
+  </div>
 
-  <!-- Main Content -->
-  <main class="tv-body">
-    <!-- Spotlight: Current Token Calling -->
-    <div class="spotlight-card">
-      <button type="button" class="audio-btn" id="audioToggle" onclick="toggleAudio()">
-        🔊 साउंड ऑन (Sound On)
-      </button>
-
-      <div class="now-serving-badge">
-        <span class="pulse-dot"></span>
-        वर्तमान मरीज &bull; NOW CALLING
-      </div>
-
-      <div class="spotlight-token" id="activeToken">--</div>
-      <div class="spotlight-name" id="activePatient">प्रतीक्षारत (Please Wait)</div>
-
-      <div class="spotlight-cabin">
-        <span>🚪</span> डॉक्टर केबिन 1 &bull; Dr. Cabin (In Consultation)
-      </div>
-    </div>
-
-    <!-- Right: Waiting Queue -->
-    <div class="queue-card">
-      <div class="queue-card-header">
-        <div class="queue-card-title">
-          <span>⏳</span> कतार में अगले मरीज (Upcoming Tokens)
-        </div>
-        <div class="queue-card-badge" id="waitingCountBadge">0 प्रतीक्षारत</div>
-      </div>
-
-      <div class="queue-list-items" id="upcomingList">
-        <div style="text-align:center;padding:40px;color:#64748b;font-size:1.1rem;">
-          लोड हो रहा है...
+  <div class="tv-screen">
+    
+    <!-- 1. TOP HEADER -->
+    <header class="top-header">
+      <div class="brand-section">
+        <div class="clinic-logo">🩺</div>
+        <div class="clinic-info">
+          <h1 id="tvClinicName">{{ clinic_name }}</h1>
+          <p>Healthy Life, Happier Family • आपका स्वास्थ्य, हमारी प्राथमिकता</p>
         </div>
       </div>
-    </div>
-  </main>
 
-  <!-- Bottom Ticker -->
-  <footer class="tv-ticker">
-    <span class="ticker-label">सूचना</span>
-    <span class="ticker-text" id="tickerMsg">
-      📢 कृपया अपने टोकन नंबर की बारी आने पर ही डॉक्टर केबिन में प्रवेश करें &nbsp;&bull;&nbsp; डॉ. धाकड़ क्लीनिक — आपकी सेहत, हमारा संकल्प &nbsp;&bull;&nbsp; पूछताछ / रिसेप्शन डेस्क पर संपर्क करें &nbsp;&bull;&nbsp; स्वच्छता बनाए रखें
-    </span>
-  </footer>
+      <div class="tagline-pulse">
+        <div class="tagline-text">
+          आपके <span>स्वास्थ्य की सुरक्षा</span> हमारी सर्वोच्च प्राथमिकता है
+        </div>
+        <svg class="ecg-pulse" viewBox="0 0 100 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 15 H20 L25 5 L32 25 L38 2 L45 28 L50 15 H100" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <div class="date-time-widget">
+        <div class="date-box">
+          <div class="date-day" id="clockDate">--</div>
+          <div class="date-sub" id="clockDay">--</div>
+        </div>
+        <!-- DIGITAL CLOCK -->
+        <div class="time-badge">
+          <span id="clockHours">--</span><span class="colon">:</span><span id="clockMins">--</span><span class="seconds" id="clockSecs">:--</span><span class="ampm" id="clockAmpm">AM</span>
+        </div>
+        <button class="audio-btn" id="audioToggleBtn" onclick="toggleAudioManual()">
+          <span id="audioIcon">🔇</span>
+          <span id="audioText">Sound</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 2. MAIN 3-COLUMN CONTENT -->
+    <main class="main-grid">
+
+      <!-- LEFT COLUMN: Welcome & Health Vision -->
+      <section class="welcome-card">
+        <div class="welcome-heading">
+          <h2>
+            आपका <span>हार्दिक स्वागत है</span>
+          </h2>
+          <p class="welcome-sub">
+            स्वस्थ जीवन, खुशहाल परिवार — यही हमारा सर्वोच्च उद्देश्य है।
+          </p>
+        </div>
+
+        <div class="heart-art-center">
+          <div class="heart-graphic-pulse">
+            <!-- 3D Heart Medical Icon with glowing pulse -->
+            <svg viewBox="0 0 24 24" fill="#dc2626">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="quote-box">
+          <p>❝ समय पर सही जाँच व परामर्श ही खुशहाल एवं स्वस्थ जीवन की पहचान है। ❞</p>
+        </div>
+      </section>
+
+      <!-- CENTER COLUMN: Doctor Profile Card -->
+      <section class="doctor-card">
+        <div class="doctor-header-row">
+          <div class="doctor-avatar-box">
+            {% if doctor_photo %}
+              <img id="docPhotoImg" src="{{ doctor_photo }}" alt="Doctor" style="width:100%;height:100%;object-fit:cover;border-radius:13px;">
+              <span id="docPhotoEmoji" style="font-size:46px;display:none;">👨‍⚕️</span>
+            {% else %}
+              <img id="docPhotoImg" src="" alt="Doctor" style="width:100%;height:100%;object-fit:cover;border-radius:13px;display:none;">
+              <span id="docPhotoEmoji" style="font-size:46px;">👨‍⚕️</span>
+            {% endif %}
+          </div>
+          <div class="doctor-meta-info">
+            <h3 id="docProfileName">{{ doctor_name }}</h3>
+            <div class="doc-qual" id="tvDoctorQual">{{ doctor_qual }}</div>
+            <div class="doc-role" id="tvDoctorRole">{{ doctor_role }}</div>
+          </div>
+        </div>
+
+        <div class="doctor-divider"></div>
+
+        <div class="doctor-bullets">
+          <div class="bullet-item">
+            <div class="bullet-icon">🩺</div>
+            <div class="bullet-text" id="tvDocBullet1">{{ doctor_bullet1 }}</div>
+          </div>
+          <div class="bullet-item">
+            <div class="bullet-icon">🔬</div>
+            <div class="bullet-text" id="tvDocBullet2">{{ doctor_bullet2 }}</div>
+          </div>
+          <div class="bullet-item">
+            <div class="bullet-icon">💊</div>
+            <div class="bullet-text" id="tvDocBullet3">{{ doctor_bullet3 }}</div>
+          </div>
+          <div class="bullet-item">
+            <div class="bullet-icon">👥</div>
+            <div class="bullet-text" id="tvDocBullet4">{{ doctor_bullet4 }}</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: Token Queue & Calling -->
+      <section class="queue-column">
+
+        <!-- Active Now Consulting Card -->
+        <div class="token-card-active" id="activeTokenCard">
+          <div class="token-header-tag">
+            <div class="label">
+              <span class="live-dot"></span>
+              अभी परामर्श में (Now Consulting)
+            </div>
+            <span style="font-size:1.4rem;">🩺</span>
+          </div>
+
+          <div class="token-main-number" id="tvActiveToken">T---</div>
+          
+          <!-- Full Patient Name (Large, Yellow, Word-wrap) -->
+          <div class="patient-callout-name" id="tvActivePatient">प्रतीक्षारत (Please Wait)</div>
+
+          <!-- Live Consultation Running Timer -->
+          <div class="consultation-timer-box" id="consultationTimerBox">
+            <span>⏱️</span>
+            <span>परामर्श समय:</span>
+            <span class="timer-val" id="consultationTimer">00:00</span>
+          </div>
+
+          <div class="token-footer-sub">
+            <span>👉 कृपया डॉक्टर के कक्ष में जाएँ (Please enter Room)</span>
+          </div>
+        </div>
+
+        <!-- Next Token Card -->
+        <div class="token-card-next">
+          <div class="next-tag-row">
+            <div class="label">
+              <span>⏳</span> अगली बारी (Next Token)
+            </div>
+            <span style="font-size:0.85rem;color:#0284c7;font-weight:700;" id="tvNextTokenWaitCount">0 वेटिंग</span>
+          </div>
+
+          <div class="next-token-number" id="tvNextToken">T---</div>
+          <div class="next-patient-name" id="tvNextPatient">कोई प्रतीक्षारत नहीं</div>
+
+          <div class="next-sub-hint">
+            कृपया तैयार रहें (Please be ready)
+          </div>
+        </div>
+
+        <!-- Doctor Availability & Timings -->
+        <div class="status-timings-grid">
+          <div class="status-pill">
+            <span class="icon">👨‍⚕️</span>
+            <div>
+              <div class="title">डॉक्टर उपलब्ध हैं</div>
+              <div class="desc">Consultation जारी है</div>
+            </div>
+          </div>
+
+          <div class="timings-pill">
+            <span class="icon">🕒</span>
+            <div>
+              <div class="title" id="tvTimingsTitle">{{ tv_timings }}</div>
+              <div class="desc">समय पर पधारें (Welcome)</div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- 3. BOTTOM SERVICES ROW -->
+    <section class="services-bar">
+      <div class="services-title-badge">
+        <span>🏥</span> हमारी सेवाएँ:
+      </div>
+      <div class="services-carousel" id="tvServicesContainer">
+        <!-- Default Services chips (Will also update dynamically from settings) -->
+        <div class="service-chip"><span class="icon">🩺</span><span class="name">परामर्श (Consultation)</span></div>
+        <div class="service-chip"><span class="icon">📈</span><span class="name">ECG जाँच</span></div>
+        <div class="service-chip"><span class="icon">🩸</span><span class="name">बीपी / शुगर जाँच</span></div>
+        <div class="service-chip"><span class="icon">🔬</span><span class="name">रक्त जाँच (Lab)</span></div>
+        <div class="service-chip"><span class="icon">💨</span><span class="name">नेबुलाइजर</span></div>
+        <div class="service-chip"><span class="icon">💊</span><span class="name">दवा परामर्श</span></div>
+        <div class="service-chip"><span class="icon">📋</span><span class="name">फॉलो-अप देखभाल</span></div>
+      </div>
+    </section>
+
+    <!-- 4. BOTTOM MARQUEE NEWS TICKER -->
+    <footer class="bottom-ticker">
+      <div class="ticker-badge">
+        <span>📢</span> महत्वपूर्ण सूचना
+      </div>
+      <div class="ticker-marquee">
+        <div class="ticker-content" id="tvNoticeContent">
+          {{ tv_notice }}
+        </div>
+      </div>
+    </footer>
+
+  </div>
 
   <script>
     'use strict';
+    let audioUnlocked = false;
     let lastActiveToken = null;
     let lastCallTimestamp = 0;
-    let soundEnabled = false;
+    let activeConsultationStartTime = null;
 
-    // Clock
+    // ─── DIGITAL CLOCK & DATE ───
     function updateClock() {
       const now = new Date();
-      document.getElementById('clockTime').textContent = now.toLocaleTimeString('en-US', { hour12: true });
-      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-      document.getElementById('clockDate').textContent = now.toLocaleDateString('hi-IN', options);
+      let hours = now.getHours();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 becomes 12
+      const hoursStr = String(hours).padStart(2, '0');
+      const minsStr = String(now.getMinutes()).padStart(2, '0');
+      const secsStr = String(now.getSeconds()).padStart(2, '0');
+
+      const hEl = document.getElementById('clockHours');
+      const mEl = document.getElementById('clockMins');
+      const sEl = document.getElementById('clockSecs');
+      const aEl = document.getElementById('clockAmpm');
+      if (hEl) hEl.textContent = hoursStr;
+      if (mEl) mEl.textContent = minsStr;
+      if (sEl) sEl.textContent = ':' + secsStr;
+      if (aEl) aEl.textContent = ampm;
+
+      const days = ['रविवार', 'सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'];
+      const months = ['जनवरी', 'फरवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'];
+      const dayName = days[now.getDay()];
+      const monthName = months[now.getMonth()];
+      
+      const dEl = document.getElementById('clockDate');
+      const dayEl = document.getElementById('clockDay');
+      if (dEl) dEl.textContent = `${now.getDate()} ${monthName} ${now.getFullYear()}`;
+      if (dayEl) dayEl.textContent = `${dayName} (${now.toLocaleDateString('en-US', { weekday: 'long' })})`;
+
+      // Update Consultation Timer every second
+      updateConsultationTimer();
     }
+
+    // ─── CONSULTATION TIMER LOGIC ───
+    function updateConsultationTimer() {
+      const timerEl = document.getElementById('consultationTimer');
+      if (!timerEl) return;
+
+      if (!activeConsultationStartTime) {
+        timerEl.textContent = '00:00';
+        return;
+      }
+
+      const diffSecs = Math.max(0, Math.floor((Date.now() - activeConsultationStartTime) / 1000));
+      const m = Math.floor(diffSecs / 60);
+      const s = diffSecs % 60;
+      if (m >= 60) {
+        const h = Math.floor(m / 60);
+        const remM = m % 60;
+        timerEl.textContent = `${String(h).padStart(2, '0')}:${String(remM).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      } else {
+        timerEl.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }
+    }
+
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Enable sound on first click anywhere on screen
-    document.addEventListener('click', () => {
-      if (!soundEnabled) toggleAudio();
-    }, { once: true });
+    // ─── AUDIO UNLOCK & CONTROLS ───
+    function unlockAudioSystem() {
+      audioUnlocked = true;
+      localStorage.setItem('dr_tv_audio_enabled', 'true');
+      const prompt = document.getElementById('audioPrompt');
+      if (prompt) prompt.style.display = 'none';
 
-    // Sound toggle
-    function toggleAudio() {
-      soundEnabled = !soundEnabled;
-      const btn = document.getElementById('audioToggle');
-      if (soundEnabled) {
-        btn.classList.add('on');
-        btn.textContent = '🔊 साउंड चालू (Sound ON)';
-        playChime();
+      const btn = document.getElementById('audioToggleBtn');
+      if (btn) btn.classList.add('on');
+      document.getElementById('audioIcon').textContent = '🔊';
+      document.getElementById('audioText').textContent = 'Sound ON';
+
+      // Play pleasant initial chime to confirm audio is active
+      playDoubleChime();
+      speakHindiAnnouncement('साउंड चालू हो गया है');
+    }
+
+    function toggleAudioManual() {
+      if (!audioUnlocked) {
+        unlockAudioSystem();
       } else {
-        btn.classList.remove('on');
-        btn.textContent = '🔇 साउंड बंद (Sound OFF)';
+        audioUnlocked = false;
+        localStorage.setItem('dr_tv_audio_enabled', 'false');
+        const btn = document.getElementById('audioToggleBtn');
+        if (btn) btn.classList.remove('on');
+        document.getElementById('audioIcon').textContent = '🔇';
+        document.getElementById('audioText').textContent = 'Sound OFF';
       }
     }
 
-    // Web Audio Chime (Ding-Dong)
-    function playChime() {
+    // Auto-listen to any key (TV remote OK/Enter/Arrow keys) or click
+    window.addEventListener('click', () => { if (!audioUnlocked) unlockAudioSystem(); }, { once: true });
+    window.addEventListener('keydown', () => { if (!audioUnlocked) unlockAudioSystem(); }, { once: true });
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('dr_tv_audio_enabled') === 'true') {
+        unlockAudioSystem();
+      }
+    });
+
+    // ─── PLEASANT DING-DONG CHIME (Web Audio API) ───
+    function playDoubleChime() {
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const now = ctx.currentTime;
-        
-        // Tone 1 (Ding)
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioContext();
+        const t = ctx.currentTime;
+
+        // Tone 1: E5 (659Hz)
         const osc1 = ctx.createOscillator();
         const gain1 = ctx.createGain();
         osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(659.25, now); // E5
-        gain1.gain.setValueAtTime(0.35, now);
-        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+        osc1.frequency.setValueAtTime(659.25, t);
+        gain1.gain.setValueAtTime(0.4, t);
+        gain1.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
         osc1.connect(gain1);
         gain1.connect(ctx.destination);
-        osc1.start(now);
-        osc1.stop(now + 0.6);
+        osc1.start(t);
+        osc1.stop(t + 0.65);
 
-        // Tone 2 (Dong)
+        // Tone 2: C5 (523Hz)
         const osc2 = ctx.createOscillator();
         const gain2 = ctx.createGain();
         osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(523.25, now + 0.25); // C5
-        gain2.gain.setValueAtTime(0.4, now + 0.25);
-        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+        osc2.frequency.setValueAtTime(523.25, t + 0.28);
+        gain2.gain.setValueAtTime(0.45, t + 0.28);
+        gain2.gain.exponentialRampToValueAtTime(0.001, t + 1.1);
         osc2.connect(gain2);
         gain2.connect(ctx.destination);
-        osc2.start(now + 0.25);
-        osc2.stop(now + 0.9);
-      } catch (e) {
-        console.warn('Audio chime error:', e);
+        osc2.start(t + 0.28);
+        osc2.stop(t + 1.1);
+      } catch (err) {
+        console.warn('Audio chime warning:', err);
       }
     }
 
-    // Hindi Voice Announcement
-    function announcePatient(token, name) {
-      if (!soundEnabled) return;
+    // ─── HINDI VOICE ANNOUNCEMENT ───
+    function speakHindiAnnouncement(phrase) {
       try {
-        if ('speechSynthesis' in window) {
-          window.speechSynthesis.cancel();
-          const cleanName = (name || '').replace(/[\(\)\/\\]/g, ' ');
-          const text = `टोकन नंबर ${token}, ${cleanName}, डॉक्टर केबिन में आएं।`;
-          const utterance = new SpeechSynthesisUtterance(text);
-          utterance.lang = 'hi-IN';
-          utterance.rate = 0.88;
-          utterance.pitch = 1.0;
-          setTimeout(() => {
-            window.speechSynthesis.speak(utterance);
-          }, 650);
-        }
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(phrase);
+        utter.lang = 'hi-IN';
+        utter.rate = 0.88;
+        utter.pitch = 1.05;
+
+        // Try to pick Hindi voice if available
+        const voices = window.speechSynthesis.getVoices();
+        const hindiVoice = voices.find(v => v.lang.includes('hi') || v.name.includes('Hindi') || v.name.includes('India'));
+        if (hindiVoice) utter.voice = hindiVoice;
+
+        setTimeout(() => {
+          window.speechSynthesis.speak(utter);
+        }, 700);
       } catch (e) {
-        console.warn('Speech synthesis error:', e);
+        console.warn('Speech synthesis warning:', e);
       }
     }
 
-    // Fetch Live Queue
+    function announceCall(token, patientName) {
+      if (!audioUnlocked) return;
+      playDoubleChime();
+      const cleanName = (patientName || '').replace(/[\(\)\/\\]/g, ' ');
+      const announcement = `टोकन नंबर ${token}, ${cleanName}, कृपया डॉक्टर केबिन में आएं।`;
+      speakHindiAnnouncement(announcement);
+    }
+
+    // ─── DYNAMIC SERVICES RENDERING ───
+    function renderServices(servicesStr) {
+      const container = document.getElementById('tvServicesContainer');
+      if (!container || !servicesStr) return;
+      const list = servicesStr.split(',').map(s => s.trim()).filter(Boolean);
+      if (!list.length) return;
+      const icons = ['🩺', '📈', '🩸', '🔬', '💨', '💊', '📋', '❤️', '🏥', '⚕️'];
+      container.innerHTML = list.map((item, idx) => {
+        const icon = icons[idx % icons.length];
+        return `<div class="service-chip"><span class="icon">${icon}</span><span class="name">${item}</span></div>`;
+      }).join('');
+    }
+
+    // ─── LIVE QUEUE FETCHER ───
     async function fetchQueue() {
       try {
         const resp = await fetch('/api/tv/queue');
-        if (!resp.ok) {
-          showQueueError('Server Error ' + resp.status);
-          return;
-        }
+        if (!resp.ok) return;
         const res = await resp.json();
         const queue = Array.isArray(res) ? res : (res.queue || []);
         const callEvent = res.call_event || null;
+        const tvSettings = res.tv_settings || null;
 
-        // 1. Current Active (in_progress)
-        const activeTokenEl = document.getElementById('activeToken');
-        const activePatientEl = document.getElementById('activePatient');
-        const active = queue.find(q => q.status === 'in_progress');
-
-        if (active) {
-          activeTokenEl.textContent = `T-${active.token.toString().padStart(2, '0')}`;
-          activePatientEl.textContent = active.name;
-          activeTokenEl.style.color = '#00e676';
-        } else {
-          const nextWaiting = queue.find(q => q.status === 'waiting');
-          if (nextWaiting) {
-            activeTokenEl.textContent = `T-${nextWaiting.token.toString().padStart(2, '0')}`;
-            activePatientEl.textContent = `${nextWaiting.name} (तैयार रहें)`;
-            activeTokenEl.style.color = '#facc15';
-          } else {
-            activeTokenEl.textContent = '--';
-            activeTokenEl.style.color = '#fff';
-            if (queue.length > 0) {
-              activePatientEl.textContent = 'सभी मरीज पूर्ण ✅ (All Done)';
-            } else {
-              activePatientEl.textContent = 'प्रतीक्षारत (Please Wait)';
+        // 0. UPDATE DYNAMIC SETTINGS FROM DOCTOR PANEL
+        if (tvSettings) {
+          if (tvSettings.clinic_name) {
+            const cn = document.getElementById('tvClinicName');
+            if (cn) cn.textContent = tvSettings.clinic_name;
+          }
+          if (tvSettings.doctor_name) {
+            const dn = document.getElementById('docProfileName');
+            if (dn) dn.textContent = tvSettings.doctor_name;
+          }
+          if (tvSettings.doctor_qual) {
+            const dq = document.getElementById('tvDoctorQual');
+            if (dq) dq.textContent = tvSettings.doctor_qual;
+          }
+          if (tvSettings.doctor_role) {
+            const dr = document.getElementById('tvDoctorRole');
+            if (dr) dr.textContent = tvSettings.doctor_role;
+          }
+          if (tvSettings.doctor_bullet1) {
+            const b1 = document.getElementById('tvDocBullet1');
+            if (b1) b1.textContent = tvSettings.doctor_bullet1;
+          }
+          if (tvSettings.doctor_bullet2) {
+            const b2 = document.getElementById('tvDocBullet2');
+            if (b2) b2.textContent = tvSettings.doctor_bullet2;
+          }
+          if (tvSettings.doctor_bullet3) {
+            const b3 = document.getElementById('tvDocBullet3');
+            if (b3) b3.textContent = tvSettings.doctor_bullet3;
+          }
+          if (tvSettings.doctor_bullet4) {
+            const b4 = document.getElementById('tvDocBullet4');
+            if (b4) b4.textContent = tvSettings.doctor_bullet4;
+          }
+          if (tvSettings.tv_timings) {
+            const tt = document.getElementById('tvTimingsTitle');
+            if (tt) tt.textContent = tvSettings.tv_timings;
+          }
+          if (tvSettings.tv_notice) {
+            const nt = document.getElementById('tvNoticeContent');
+            if (nt && nt.textContent.trim() !== tvSettings.tv_notice.trim()) {
+              nt.textContent = tvSettings.tv_notice;
             }
+          }
+          if (tvSettings.tv_services) {
+            renderServices(tvSettings.tv_services);
+          }
+          if (tvSettings.doctor_photo) {
+            const img = document.getElementById('docPhotoImg');
+            const emoji = document.getElementById('docPhotoEmoji');
+            if (img) {
+              if (img.src !== tvSettings.doctor_photo && !img.src.endsWith(tvSettings.doctor_photo)) {
+                img.src = tvSettings.doctor_photo;
+              }
+              img.style.display = 'block';
+            }
+            if (emoji) emoji.style.display = 'none';
           }
         }
 
-        // Check if explicit call event fired (supports re-ringing)
+        const activeCard = document.getElementById('activeTokenCard');
+        const activeTokenEl = document.getElementById('tvActiveToken');
+        const activePatientEl = document.getElementById('tvActivePatient');
+        const nextTokenEl = document.getElementById('tvNextToken');
+        const nextPatientEl = document.getElementById('tvNextPatient');
+        const nextWaitBadge = document.getElementById('tvNextTokenWaitCount');
+
+        const active = queue.find(q => q.status === 'in_progress');
+        const waitingList = queue.filter(q => q.status === 'waiting');
+
+        // 1. ACTIVE PATIENT (NOW CONSULTING)
+        if (active) {
+          activeTokenEl.textContent = `T-${active.token.toString().padStart(3, '0')}`;
+          activePatientEl.textContent = active.name; // FULL NAME without truncation
+          activeConsultationStartTime = res.active_start_time || Date.now();
+        } else {
+          activeConsultationStartTime = null;
+          if (waitingList.length > 0) {
+            activeTokenEl.textContent = `T-${waitingList[0].token.toString().padStart(3, '0')}`;
+            activePatientEl.textContent = `${waitingList[0].name} (तैयार रहें)`;
+          } else {
+            activeTokenEl.textContent = '--';
+            activePatientEl.textContent = queue.length > 0 ? 'सभी मरीज पूर्ण ✅ (All Done)' : 'प्रतीक्षारत (Please Wait)';
+          }
+        }
+
+        // 2. NEXT PATIENT
+        const nextCandidate = active ? waitingList[0] : (waitingList.length > 1 ? waitingList[1] : null);
+        if (nextCandidate) {
+          nextTokenEl.textContent = `T-${nextCandidate.token.toString().padStart(3, '0')}`;
+          nextPatientEl.textContent = nextCandidate.name;
+          nextWaitBadge.textContent = `${waitingList.length} प्रतीक्षारत`;
+        } else {
+          nextTokenEl.textContent = '--';
+          nextPatientEl.textContent = 'कोई अन्य मरीज प्रतीक्षारत नहीं';
+          nextWaitBadge.textContent = '0 प्रतीक्षारत';
+        }
+
+        // 3. SOUND TRIGGER (ON RE-RING OR STATUS CHANGE)
         if (callEvent && callEvent.timestamp && callEvent.timestamp > lastCallTimestamp) {
           lastCallTimestamp = callEvent.timestamp;
           lastActiveToken = callEvent.token;
-          if (soundEnabled && callEvent.token) {
-            playChime();
-            announcePatient(callEvent.token, callEvent.name);
-          }
+          activeCard.classList.add('new-ring');
+          setTimeout(() => activeCard.classList.remove('new-ring'), 2500);
+          announceCall(callEvent.token, callEvent.name);
         } else if (active && lastActiveToken !== active.token) {
           lastActiveToken = active.token;
-          if (soundEnabled) {
-            playChime();
-            announcePatient(active.token, active.name);
-          }
+          activeCard.classList.add('new-ring');
+          setTimeout(() => activeCard.classList.remove('new-ring'), 2500);
+          announceCall(active.token, active.name);
         }
-
-        // 2. RIGHT PANEL: Show ALL today's patients (waiting + in_progress + completed)
-        const waitingList = queue.filter(q => q.status === 'waiting');
-        const totalWaiting = waitingList.length;
-        document.getElementById('waitingCountBadge').textContent = `${totalWaiting} प्रतीक्षारत`;
-
-        const container = document.getElementById('upcomingList');
-        if (!queue.length) {
-          container.innerHTML = `
-            <div style="text-align:center;padding:50px 20px;color:#64748b;">
-              <div style="font-size:2.5rem;margin-bottom:8px;">📋</div>
-              <p style="font-size:1.15rem;font-weight:600;">आज कोई मरीज नहीं</p>
-            </div>`;
-          return;
-        }
-
-        // Status badge style helper
-        function statusBadge(status) {
-          if (status === 'in_progress') return {bg:'rgba(0,210,255,0.15)',color:'#00d2ff',border:'#00d2ff',text:'🔵 जारी (In Progress)'};
-          if (status === 'completed')  return {bg:'rgba(0,230,118,0.1)', color:'#00e676',border:'#00e676',text:'✅ पूर्ण (Done)'};
-          if (status === 'waiting')    return {bg:'rgba(250,204,21,0.12)',color:'#facc15',border:'rgba(250,204,21,0.4)',text:'⏳ प्रतीक्षारत'};
-          return {bg:'rgba(148,163,184,0.1)',color:'#94a3b8',border:'#475569',text:status};
-        }
-
-        container.innerHTML = queue.map((q, idx) => {
-          const s = statusBadge(q.status);
-          const isCompleted = q.status === 'completed';
-          return `
-          <div class="queue-row" style="${isCompleted ? 'opacity:0.55;' : ''}">
-            <div class="queue-row-left">
-              <div class="queue-token-pill" style="${isCompleted ? 'color:#64748b;text-decoration:line-through;' : ''}">${q.token.toString().padStart(2,'0')}</div>
-              <div class="queue-row-name" style="${isCompleted ? 'text-decoration:line-through;color:#64748b;' : ''}">${q.name}</div>
-            </div>
-            <div class="queue-row-status" style="background:${s.bg};color:${s.color};border:1px solid ${s.border};">${s.text}</div>
-          </div>`;
-        }).join('');
 
       } catch (err) {
-        console.error('TV Queue update error:', err);
-        showQueueError('Connection Error');
+        console.error('TV Queue fetch error:', err);
       }
     }
 
-    function showQueueError(msg) {
-      const container = document.getElementById('upcomingList');
-      if (container && container.querySelector('.tv-error-state') === null) {
-        container.innerHTML = `
-          <div class="tv-error-state" style="text-align:center;padding:40px 20px;color:#ef4444;">
-            <div style="font-size:2rem;margin-bottom:8px;">⚠️</div>
-            <p style="font-size:1rem;font-weight:600;">${msg}</p>
-            <p style="font-size:0.85rem;color:#64748b;margin-top:4px;">Auto-retry हो रहा है...</p>
-          </div>`;
-      }
-    }
-
-
-
-    // Auto-update every 4 seconds
-    setInterval(fetchQueue, 4000);
+    // Poll every 3 seconds
+    setInterval(fetchQueue, 3000);
     fetchQueue();
   </script>
 </body>
