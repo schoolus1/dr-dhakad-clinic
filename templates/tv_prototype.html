@@ -1091,7 +1091,7 @@
 
       // Play pleasant initial chime to confirm audio is active
       playDoubleChime();
-      speakHindiAnnouncement('साउंड चालू हो गया है');
+      speakHindiAnnouncement('साउंड चालू हो गया है', 1);
     }
 
     function toggleAudioManual() {
@@ -1206,38 +1206,95 @@
       }
     });
 
-    // ─── HINDI VOICE ANNOUNCEMENT (MP3 from Server with SpeechSynthesis Fallback) ───
+    // ─── HINDI VOICE ANNOUNCEMENT (MP3 with 3 Repetitions & SpeechSynthesis Fallback) ───
     let currentTtsAudio = null;
+    let announcementCallId = 0; // Incremented on each new patient call to cancel previous repeats
 
-    function speakHindiAnnouncement(phrase) {
-      // 1. Play high quality MP3 voice from server (Works 100% on Smart TVs and PCs)
-      try {
-        if (currentTtsAudio) {
-          currentTtsAudio.pause();
-          currentTtsAudio = null;
-        }
-        const audioUrl = `/api/tts?text=${encodeURIComponent(phrase)}`;
-        const audio = new Audio(audioUrl);
-        currentTtsAudio = audio;
-
-        // Play 650ms after chime
-        setTimeout(() => {
-          audio.play().catch(err => {
-            console.warn('Audio MP3 play failed, falling back to browser SpeechSynthesis:', err);
-            speakHindiSpeechSynthesisFallback(phrase);
-          });
-        }, 650);
-      } catch (err) {
-        console.warn('Audio TTS init error:', err);
-        speakHindiSpeechSynthesisFallback(phrase);
+    function stopAllAudio() {
+      if (currentTtsAudio) {
+        currentTtsAudio.pause();
+        currentTtsAudio.currentTime = 0;
+        currentTtsAudio = null;
+      }
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
       }
     }
 
-    function speakHindiSpeechSynthesisFallback(phrase) {
+    function speakHindiAnnouncement(phrase, repeatCount = 3) {
+      stopAllAudio();
+      announcementCallId++;
+      const thisCallId = announcementCallId;
+      let remainingRepeats = repeatCount;
+
+      function playNextRepeat() {
+        if (thisCallId !== announcementCallId) return; // Cancelled if new patient is called
+        if (remainingRepeats <= 0) return;
+
+        remainingRepeats--;
+
+        // 1. High-quality natural Hindi MP3 stream from server (Works 100% on Smart TVs)
+        const audioUrl = `/api/tts?text=${encodeURIComponent(phrase)}&_t=${Date.now()}`;
+        const audio = new Audio(audioUrl);
+        currentTtsAudio = audio;
+
+        audio.onended = () => {
+          if (thisCallId !== announcementCallId) return;
+          if (remainingRepeats > 0) {
+            // 1.4 second polite pause between repeats
+            setTimeout(() => {
+              if (thisCallId === announcementCallId) {
+                playNextRepeat();
+              }
+            }, 1400);
+          }
+        };
+
+        audio.onerror = () => {
+          console.warn('Audio MP3 play failed, falling back to speech synthesis');
+          speakFallback(phrase, () => {
+            if (thisCallId !== announcementCallId) return;
+            if (remainingRepeats > 0) {
+              setTimeout(() => {
+                if (thisCallId === announcementCallId) {
+                  playNextRepeat();
+                }
+              }, 1400);
+            }
+          });
+        };
+
+        audio.play().catch(err => {
+          console.warn('Audio play catch, falling back to speech synthesis:', err);
+          speakFallback(phrase, () => {
+            if (thisCallId !== announcementCallId) return;
+            if (remainingRepeats > 0) {
+              setTimeout(() => {
+                if (thisCallId === announcementCallId) {
+                  playNextRepeat();
+                }
+              }, 1400);
+            }
+          });
+        });
+      }
+
+      // Initial delay of 650ms after the chime
+      setTimeout(() => {
+        if (thisCallId === announcementCallId) {
+          playNextRepeat();
+        }
+      }, 650);
+    }
+
+    function speakFallback(phrase, onEndCallback) {
       try {
-        if (!('speechSynthesis' in window)) return;
-        window.speechSynthesis.resume();
+        if (!('speechSynthesis' in window)) {
+          if (onEndCallback) onEndCallback();
+          return;
+        }
         window.speechSynthesis.cancel();
+        window.speechSynthesis.resume();
         const utter = new SpeechSynthesisUtterance(phrase);
         utter.lang = 'hi-IN';
         utter.rate = 0.85;
@@ -1246,9 +1303,12 @@
         const voices = window.speechSynthesis.getVoices();
         const hindiVoice = voices.find(v => v.lang.startsWith('hi') || v.lang.includes('IN') || v.name.includes('Hindi'));
         if (hindiVoice) utter.voice = hindiVoice;
+
+        utter.onend = () => { if (onEndCallback) onEndCallback(); };
+        utter.onerror = () => { if (onEndCallback) onEndCallback(); };
         window.speechSynthesis.speak(utter);
       } catch (e) {
-        console.warn('Speech synthesis warning:', e);
+        if (onEndCallback) onEndCallback();
       }
     }
 
