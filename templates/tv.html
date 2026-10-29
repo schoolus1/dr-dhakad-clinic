@@ -959,6 +959,7 @@
     let lastActiveToken = null;
     let lastCallTimestamp = 0;
     let activeConsultationStartTime = null;
+    let isFirstFetch = true;
 
     // ─── DIGITAL CLOCK & DATE ───
     function updateClock() {
@@ -1189,6 +1190,14 @@
     }
 
     function announceCall(token, patientName) {
+      if (!audioUnlocked) {
+        const prompt = document.getElementById('audioPrompt');
+        if (prompt) {
+          prompt.style.display = 'flex';
+          prompt.innerHTML = `<span>🔔</span><span>नया मरीज बुलाया गया! टीवी स्क्रीन पर कहीं भी क्लिक करें (Click to Hear Voice)</span>`;
+        }
+        return;
+      }
       playDoubleChime();
       const cleanName = (patientName || '').replace(/[\(\)\/\\]/g, ' ');
       const announcement = `टोकन नंबर ${token}, ${cleanName}, कृपया डॉक्टर केबिन में आएं।`;
@@ -1317,17 +1326,23 @@
         }
 
         // 3. SOUND TRIGGER (ON RE-RING OR STATUS CHANGE)
-        if (callEvent && callEvent.timestamp && callEvent.timestamp > lastCallTimestamp) {
-          lastCallTimestamp = callEvent.timestamp;
-          lastActiveToken = callEvent.token;
-          activeCard.classList.add('new-ring');
-          setTimeout(() => activeCard.classList.remove('new-ring'), 2500);
-          announceCall(callEvent.token, callEvent.name);
-        } else if (active && lastActiveToken !== active.token) {
-          lastActiveToken = active.token;
-          activeCard.classList.add('new-ring');
-          setTimeout(() => activeCard.classList.remove('new-ring'), 2500);
-          announceCall(active.token, active.name);
+        if (isFirstFetch) {
+          isFirstFetch = false;
+          if (callEvent && callEvent.timestamp) lastCallTimestamp = callEvent.timestamp;
+          if (active) lastActiveToken = active.token;
+        } else {
+          if (callEvent && callEvent.timestamp && callEvent.timestamp > lastCallTimestamp) {
+            lastCallTimestamp = callEvent.timestamp;
+            lastActiveToken = callEvent.token;
+            activeCard.classList.add('new-ring');
+            setTimeout(() => activeCard.classList.remove('new-ring'), 2500);
+            announceCall(callEvent.token, callEvent.name);
+          } else if (active && lastActiveToken !== active.token) {
+            lastActiveToken = active.token;
+            activeCard.classList.add('new-ring');
+            setTimeout(() => activeCard.classList.remove('new-ring'), 2500);
+            announceCall(active.token, active.name);
+          }
         }
 
       } catch (err) {
