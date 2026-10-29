@@ -21,16 +21,8 @@ window.addEventListener('DOMContentLoaded', () => {
     if (el) el.value = today;
   });
 
-  // Enter key in medicine inputs to quickly add
-  const medInput = document.getElementById('rx_name_input');
-  if (medInput) {
-    medInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        addMedFromInputs();
-      }
-    });
-  }
+  // Initialize smart interactive medicine autocomplete
+  setupRxAutocomplete();
   const instInput = document.getElementById('rx_inst_input');
   if (instInput) {
     instInput.addEventListener('keydown', (e) => {
@@ -159,10 +151,14 @@ function statusLabel(s) {
 }
 
 // ─── MEDICINES AUTO-SUGGEST & QUICK CHIPS ───
+let autocompleteActiveIndex = -1;
+
 async function loadMedicines() {
   try {
     const resp = await fetch('/api/medicines');
     allMedicines = await resp.json();
+    // Sort descending by usage_count (most prescribed medicines come first)
+    allMedicines.sort((a, b) => (b.usage_count || 1) - (a.usage_count || 1));
     renderMedicineSuggestions();
     renderQuickChips();
   } catch (e) {
@@ -173,7 +169,7 @@ async function loadMedicines() {
 function renderMedicineSuggestions() {
   const dl = document.getElementById('medSuggestionsList');
   if (!dl) return;
-  dl.innerHTML = allMedicines.map(m => `<option value="${m.name}"></option>`).join('');
+  dl.innerHTML = allMedicines.map(m => `<option value="${m.name}">${m.name} — ${m.dose || ''} (${m.usage_count || 1} बार)</option>`).join('');
 }
 
 function renderQuickChips() {
@@ -183,11 +179,19 @@ function renderQuickChips() {
     container.innerHTML = '<span style="font-size:0.8rem;color:var(--text2);">कोई दवाई उपलब्ध नहीं</span>';
     return;
   }
-  container.innerHTML = allMedicines.slice(0, 15).map(m => `
-    <span class="med-chip" onclick='selectQuickMed(${JSON.stringify(m)})'>
-      + ${m.name}
-    </span>
-  `).join('');
+  // Show top 20 most frequently prescribed medicines
+  const topMeds = [...allMedicines].sort((a, b) => (b.usage_count || 1) - (a.usage_count || 1)).slice(0, 20);
+  container.innerHTML = topMeds.map(m => {
+    const escapedMed = JSON.stringify(m).replace(/"/g, '&quot;');
+    const countBadge = (m.usage_count && m.usage_count > 1) 
+      ? `<span style="font-size:0.68rem;background:rgba(26,115,232,0.18);color:#1a73e8;padding:1px 6px;border-radius:10px;margin-left:4px;font-weight:700;">⭐ ${m.usage_count}</span>` 
+      : '';
+    return `
+      <span class="med-chip" onclick="selectQuickMed(${escapedMed})" title="${m.name} (डोज़: ${m.dose || '-'}, ${m.timing || '-'})">
+        💊 ${m.name}${countBadge}
+      </span>
+    `;
+  }).join('');
 }
 
 function selectQuickMed(med) {
@@ -199,7 +203,112 @@ function selectQuickMed(med) {
   if (med.timing) document.getElementById('rx_timing_input').value = med.timing;
   if (med.days) document.getElementById('rx_days_input').value = med.days;
   if (med.instructions) document.getElementById('rx_inst_input').value = med.instructions;
+  closeRxDropdown();
   document.getElementById('rx_name_input').focus();
+}
+
+// ─── INTERACTIVE RX AUTOCOMPLETE DROPDOWN ───
+function setupRxAutocomplete() {
+  const input = document.getElementById('rx_name_input');
+  const dropdown = document.getElementById('rxAutocompleteDropdown');
+  if (!input || !dropdown) return;
+
+  input.addEventListener('input', () => {
+    const query = input.value.trim().toLowerCase();
+    autocompleteActiveIndex = -1;
+
+    // Check if entered name directly matches an existing medicine, auto-fill dosage & timing!
+    const exactMatch = allMedicines.find(m => m.name.toLowerCase() === query);
+    if (exactMatch) {
+      if (exactMatch.dose) document.getElementById('rx_dose_input').value = exactMatch.dose;
+      if (exactMatch.timing) document.getElementById('rx_timing_input').value = exactMatch.timing;
+      if (exactMatch.days) document.getElementById('rx_days_input').value = exactMatch.days;
+      if (exactMatch.instructions) document.getElementById('rx_inst_input').value = exactMatch.instructions;
+    }
+
+    if (!query) {
+      dropdown.style.display = 'none';
+      dropdown.innerHTML = '';
+      return;
+    }
+
+    const matches = allMedicines.filter(m => m.name.toLowerCase().includes(query)).slice(0, 8);
+    if (!matches.length) {
+      dropdown.style.display = 'none';
+      dropdown.innerHTML = '';
+      return;
+    }
+
+    dropdown.innerHTML = matches.map((m, idx) => {
+      const escaped = JSON.stringify(m).replace(/"/g, '&quot;');
+      const freqText = (m.usage_count && m.usage_count > 1) ? `⭐ ${m.usage_count} बार` : 'नया (New)';
+      return `
+        <div class="rx-autocomplete-item" data-index="${idx}" onclick="selectQuickMed(${escaped})">
+          <div>
+            <div class="rx-autocomplete-name">${m.name}</div>
+            <div class="rx-autocomplete-meta">${m.dose || ''} &bull; ${m.timing || ''} &bull; ${m.days || ''}</div>
+          </div>
+          <span class="rx-autocomplete-freq">${freqText}</span>
+        </div>
+      `;
+    }).join('');
+    dropdown.style.display = 'block';
+  });
+
+  input.addEventListener('keydown', (e) => {
+    const items = dropdown.querySelectorAll('.rx-autocomplete-item');
+    if (dropdown.style.display !== 'none' && items.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        autocompleteActiveIndex = (autocompleteActiveIndex + 1) % items.length;
+        updateAutocompleteHighlight(items);
+        return;
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        autocompleteActiveIndex = (autocompleteActiveIndex - 1 + items.length) % items.length;
+        updateAutocompleteHighlight(items);
+        return;
+      } else if (e.key === 'Enter') {
+        if (autocompleteActiveIndex >= 0 && autocompleteActiveIndex < items.length) {
+          e.preventDefault();
+          items[autocompleteActiveIndex].click();
+          return;
+        }
+      } else if (e.key === 'Escape') {
+        closeRxDropdown();
+        return;
+      }
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addMedFromInputs();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.rx-input-group-relative')) {
+      closeRxDropdown();
+    }
+  });
+}
+
+function updateAutocompleteHighlight(items) {
+  items.forEach((item, idx) => {
+    item.classList.toggle('active', idx === autocompleteActiveIndex);
+    if (idx === autocompleteActiveIndex) {
+      item.scrollIntoView({ block: 'nearest' });
+    }
+  });
+}
+
+function closeRxDropdown() {
+  const dropdown = document.getElementById('rxAutocompleteDropdown');
+  if (dropdown) {
+    dropdown.style.display = 'none';
+    dropdown.innerHTML = '';
+  }
+  autocompleteActiveIndex = -1;
 }
 
 function addMedFromInputs() {
@@ -225,9 +334,33 @@ function addMedFromInputs() {
 
   renderRxTable();
 
+  // Instant catalog update so it immediately appears in top chips & auto-suggest
+  fetch('/api/medicines', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name, dose: dose, timing: timing, days: days, instructions: instructions })
+  }).then(r => r.json()).then(res => {
+    if (res.success && res.medicine) {
+      const idx = allMedicines.findIndex(m => m.name.toLowerCase() === name.toLowerCase());
+      if (idx >= 0) {
+        allMedicines[idx].usage_count = (allMedicines[idx].usage_count || 1) + 1;
+        if (dose) allMedicines[idx].dose = dose;
+        if (timing) allMedicines[idx].timing = timing;
+        if (days) allMedicines[idx].days = days;
+        if (instructions) allMedicines[idx].instructions = instructions;
+      } else {
+        allMedicines.unshift(res.medicine);
+      }
+      allMedicines.sort((a, b) => (b.usage_count || 1) - (a.usage_count || 1));
+      renderQuickChips();
+      renderMedicineSuggestions();
+    }
+  }).catch(() => {});
+
   // Reset inputs
   nameEl.value = '';
   document.getElementById('rx_inst_input').value = '';
+  closeRxDropdown();
   nameEl.focus();
 }
 

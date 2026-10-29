@@ -10,6 +10,53 @@
     @media(max-width:900px) { .visit-panel { grid-template-columns: 1fr; } }
     .rx-header { display: grid; grid-template-columns: 2fr 1fr 1.5fr 0.7fr 1.5fr 40px; gap: 6px; font-size:0.72rem; font-weight:600; color:var(--text2); padding: 0 4px; margin-bottom: 4px; }
     @media(max-width:768px) { .rx-header { display:none; } }
+
+    .rx-input-group-relative { position: relative; }
+    .rx-autocomplete-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+      max-height: 240px;
+      overflow-y: auto;
+      z-index: 1050;
+      margin-top: 4px;
+    }
+    .rx-autocomplete-item {
+      padding: 9px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s;
+    }
+    .rx-autocomplete-item:hover, .rx-autocomplete-item.active {
+      background: #eff6ff;
+    }
+    .rx-autocomplete-name {
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 0.88rem;
+    }
+    .rx-autocomplete-meta {
+      font-size: 0.74rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .rx-autocomplete-freq {
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -188,10 +235,11 @@
 
                 <!-- Add Medicine Input Bar -->
                 <div class="rx-input-grid">
-                  <div class="form-group" style="margin:0;">
-                    <label class="form-label" style="font-size:0.75rem;">दवाई का नाम (Auto-Suggest)</label>
-                    <input type="text" class="form-control" id="rx_name_input" list="medSuggestionsList" placeholder="दवा का नाम टाइप करें...">
+                  <div class="form-group rx-input-group-relative" style="margin:0;">
+                    <label class="form-label" style="font-size:0.75rem;">दवाई का नाम (Smart Auto-Suggest)</label>
+                    <input type="text" class="form-control" id="rx_name_input" autocomplete="off" list="medSuggestionsList" placeholder="दवा का नाम टाइप करें...">
                     <datalist id="medSuggestionsList"></datalist>
+                    <div id="rxAutocompleteDropdown" class="rx-autocomplete-dropdown" style="display:none;"></div>
                   </div>
                   <div class="form-group" style="margin:0;">
                     <label class="form-label" style="font-size:0.75rem;">डोज़ (Dosage)</label>

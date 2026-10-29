@@ -690,7 +690,7 @@ def handle_medicines():
     query = Medicine.query
     if q:
         query = query.filter(Medicine.name.ilike(f'%{q}%'))
-    medicines = query.order_by(Medicine.usage_count.desc(), Medicine.name.asc()).limit(50).all()
+    medicines = query.order_by(Medicine.usage_count.desc(), Medicine.name.asc()).limit(150).all()
     return jsonify([{
         'id': m.id,
         'name': m.name,
