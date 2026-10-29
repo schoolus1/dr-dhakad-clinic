@@ -446,14 +446,35 @@ async function loadPatientBills(pid) {
     </div>`).join('');
 }
 
-async function cancelBillPrompt(bid, billNum) {
-  const reason = prompt(`बिल ${billNum} रद्द करने का कारण लिखें (Reason for cancellation):`);
-  if (!reason) return;
-  const pin = prompt(`डॉक्टर की सुरक्षा पिन दर्ज करें (Doctor Security PIN - Default 1234):`);
-  if (!pin) return;
+let pendingCancelBillId = null;
+
+function cancelBillPrompt(bid, billNum) {
+  pendingCancelBillId = bid;
+  document.getElementById('cancelBillNumberDisplay').textContent = `बिल नंबर: ${billNum}`;
+  document.getElementById('cancelBillReason').value = '';
+  document.getElementById('cancelBillPin').value = '';
+  openModal('cancelBillModal');
+}
+
+async function submitCancelBill() {
+  if (!pendingCancelBillId) return;
+  const reason = document.getElementById('cancelBillReason').value.trim();
+  const pin = document.getElementById('cancelBillPin').value.trim();
+  if (!reason) {
+    toast('कृपया बिल रद्द करने का कारण लिखें', 'error');
+    return;
+  }
+  if (!pin) {
+    toast('कृपया डॉक्टर सुरक्षा पिन दर्ज करें', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('confirmCancelBillBtn');
+  btn.disabled = true;
+  btn.textContent = 'रद्द हो रहा है...';
 
   try {
-    const resp = await fetch(`/api/bills/${bid}/cancel`, {
+    const resp = await fetch(`/api/bills/${pendingCancelBillId}/cancel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reason: reason, doctor_pin: pin })
@@ -461,6 +482,7 @@ async function cancelBillPrompt(bid, billNum) {
     const res = await resp.json();
     if (res.success) {
       toast(`✅ ${res.message}`);
+      closeModal('cancelBillModal');
       if (currentBillPatientId) loadPatientBills(currentBillPatientId);
       loadTodayReport();
     } else {
@@ -468,6 +490,9 @@ async function cancelBillPrompt(bid, billNum) {
     }
   } catch (e) {
     toast('सर्वर त्रुटि', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '❌ हाँ, बिल रद्द करें';
   }
 }
 
@@ -542,6 +567,25 @@ async function loadTodayReport() {
   const cancEl = document.getElementById('rep-cancelled');
   if (cancEl) {
     cancEl.textContent = `${data.cancelled_count || 0} (₹${data.cancelled_amount || 0})`;
+  }
+  const auditBadge = document.getElementById('auditCountBadge');
+  if (auditBadge) auditBadge.textContent = data.cancelled_count || 0;
+  const auditBody = document.getElementById('auditTableBody');
+  if (auditBody) {
+    const list = data.cancelled_list || [];
+    if (!list.length) {
+      auditBody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:18px;color:#16a34a;font-weight:600;">✅ आज कोई भी बिल रद्द नहीं किया गया (All Clean)</td></tr>';
+    } else {
+      auditBody.innerHTML = list.map(b => `
+        <tr style="background:#fff1f2;">
+          <td><strong style="color:#b91c1c;">${b.bill_number}</strong></td>
+          <td><strong>${b.patient_name || '-'}</strong></td>
+          <td>${b.time || '-'}</td>
+          <td><span style="font-weight:700;color:#b91c1c;">₹${b.amount}</span></td>
+          <td style="color:#475569;font-size:0.85rem;">${b.desc || '-'}</td>
+        </tr>
+      `).join('');
+    }
   }
 }
 

@@ -772,9 +772,12 @@ def today_report():
         'cancelled_count': len(cancelled_bills),
         'cancelled_amount': sum(b.total_amount for b in cancelled_bills),
         'cancelled_list': [{
+            'id': b.id,
             'bill_number': b.bill_number,
+            'patient_name': b.patient.name if b.patient else 'अज्ञात मरीज',
             'amount': b.total_amount,
-            'desc': b.extra_charge_desc
+            'desc': b.extra_charge_desc or 'कोई विवरण नहीं',
+            'time': b.created_at.strftime('%I:%M %p')
         } for b in cancelled_bills]
     })
 

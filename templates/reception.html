@@ -269,6 +269,29 @@
           <div class="stat-card red"><div class="stat-icon">📱</div><div class="stat-value" id="rep-upi">-</div><div class="stat-label">UPI</div></div>
           <div class="stat-card" style="border: 1px solid #fca5a5; background:#fff5f5;"><div class="stat-icon" style="color:#ef4444;">❌</div><div class="stat-value" id="rep-cancelled" style="color:#b91c1c;">0</div><div class="stat-label" style="color:#b91c1c;font-weight:700;">रद्द किए बिल (Audit)</div></div>
         </div>
+
+        <!-- Anti-Fraud Audit Log Card -->
+        <div class="card mb-2" style="border:1px solid #fecdd3; background:#fffafb;">
+          <div class="card-header" style="border-bottom:1px solid #fee2e2; padding-bottom:12px; margin-bottom:14px;">
+            <div class="d-flex align-center gap-1">
+              <span class="card-title" style="color:#b91c1c;">🚨 आज रद्द किए गए बिल (Anti-Fraud Audit Log)</span>
+              <span class="badge" id="auditCountBadge" style="background:#ef4444; color:#fff;">0</span>
+            </div>
+            <span style="font-size:0.82rem; color:#881337;">सुरक्षा रिकॉर्ड: कौन सा बिल रद्द हुआ और क्यों</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr style="background:#fee2e2; color:#991b1b;">
+                  <th>बिल #</th><th>मरीज का नाम</th><th>समय</th><th>राशि (₹)</th><th>रद्द करने का विवरण / कारण</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody">
+                <tr><td colspan="5" style="text-align:center;padding:18px;color:#64748b;">कोई भी बिल रद्द नहीं किया गया (All Clean)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
         <div class="card">
           <div class="card-header">
             <span class="card-title">📊 तारीख अनुसार रिपोर्ट</span>
@@ -423,6 +446,36 @@
       <button class="btn btn-primary" id="printBillBtn" onclick="printBill()">🖨️ प्रिंट करें</button>
     </div>
   </div>
+</div>
+
+<!-- Cancel Bill Modal (Anti-Fraud PIN & Reason) -->
+<div class="modal-overlay" id="cancelBillModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header" style="background:#fef2f2;border-bottom:1px solid #fee2e2;">
+      <span class="modal-title" style="color:#b91c1c;font-weight:700;">🚨 बिल रद्द करें (Cancel Bill)</span>
+      <button class="modal-close" onclick="closeModal('cancelBillModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:8px;padding:12px;margin-bottom:16px;">
+        <div style="font-weight:700;color:#9f1239;font-size:0.95rem;" id="cancelBillNumberDisplay">बिल #</div>
+        <div style="font-size:0.82rem;color:#881337;margin-top:2px;">⚠️ बिल रद्द करने पर इसका रिकॉर्ड ऑडिट लॉग में हमेशा के लिए दर्ज होगा।</div>
+      </div>
+      <div class="form-group mb-2">
+        <label class="form-label">रद्द करने का कारण (Reason) *</label>
+        <textarea class="form-control" id="cancelBillReason" rows="2" placeholder="कारण लिखें (जैसे: गलत प्रविष्टि, मरीज ने मना किया आदि)..."></textarea>
+      </div>
+      <div class="form-group mb-2">
+        <label class="form-label">डॉक्टर सुरक्षा पिन (Doctor Security PIN) *</label>
+        <input type="password" class="form-control" id="cancelBillPin" placeholder="डिफ़ॉल्ट पिन: 1234">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('cancelBillModal')">वापस (Back)</button>
+      <button class="btn btn-danger" onclick="submitCancelBill()" id="confirmCancelBillBtn" style="font-weight:700;">❌ हाँ, बिल रद्द करें</button>
+    </div>
+  </div>
+</div>
+
 <!-- Custom Confirmation Dialog Modal -->
 <div class="modal-overlay" id="confirmModal">
   <div class="modal" style="max-width:440px; border-radius:14px; text-align:center; padding:28px 24px; box-shadow:0 20px 45px rgba(0,0,0,0.35);">

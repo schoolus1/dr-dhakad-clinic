@@ -50,15 +50,23 @@ function startClock() {
 
 // ─── NAV ───
 function showSection(name) {
-  ['queue','history','whatsapp','settings'].forEach(s => {
-    document.getElementById(`section-${s}`).style.display = s === name ? '' : 'none';
+  ['queue','history','whatsapp','settings','audit'].forEach(s => {
+    const el = document.getElementById(`section-${s}`);
+    if (el) el.style.display = s === name ? '' : 'none';
     const nav = document.getElementById(`nav-${s}`);
     if (nav) nav.classList.toggle('active', s === name);
   });
-  const titles = { queue: 'मरीजों की कतार (Patient Queue)', history: 'मरीज इतिहास (Patient History)', whatsapp: 'WhatsApp छुट्टी (WhatsApp Notice)', settings: 'सेटिंग्स (Settings)' };
+  const titles = {
+    queue: 'मरीजों की कतार (Patient Queue)',
+    history: 'मरीज इतिहास (Patient History)',
+    whatsapp: 'WhatsApp सूचना (Notice)',
+    audit: 'ऑडिट रिपोर्ट व रद्द बिल (Anti-Fraud Audit Log)',
+    settings: 'सेटिंग्स (Settings)'
+  };
   document.getElementById('pageTitle').textContent = titles[name] || name;
   if (name === 'settings') loadSettings();
   if (name === 'whatsapp') { loadEligiblePatients(); loadWaLogs(); }
+  if (name === 'audit') loadAuditReport();
 }
 
 function toggleSidebar() {
@@ -484,7 +492,14 @@ async function viewHistory() {
 
 async function copyPrescription(fromVisitId) {
   if (!currentApptId) { toast('पहले कोई मरीज चुनें (कतार से)', 'error'); return; }
-  if (!confirm('इस पर्ची को वर्तमान विजिट में कॉपी करें? डॉक्टर को पुनः समीक्षा करनी होगी।')) return;
+  const ok = await showConfirmDialog({
+    title: 'पर्ची कॉपी करें?',
+    message: 'इस पर्ची को वर्तमान विजिट में कॉपी करें? डॉक्टर को पुनः समीक्षा करनी होगी।',
+    icon: '📋',
+    okText: 'हाँ, कॉपी करें',
+    cancelText: 'रद्द करें'
+  });
+  if (!ok) return;
   const v = await fetch(`/api/visits/${fromVisitId}`).then(r => r.json());
   document.getElementById('v_diagnosis').value = v.diagnosis || '';
   document.getElementById('v_complaints').value = v.complaints || '';
@@ -593,7 +608,15 @@ async function sendWaMessages() {
   const selected = Array.from(document.querySelectorAll('.wa-patient-cb:checked')).map(cb => parseInt(cb.value));
   if (!selected.length) { toast('कम से कम एक मरीज चुनें', 'error'); return; }
 
-  if (!confirm(`${selected.length} मरीजों को WhatsApp मैसेज भेजना चाहते हैं?`)) return;
+  const ok = await showConfirmDialog({
+    title: 'WhatsApp संदेश भेजें?',
+    message: `${selected.length} मरीजों को WhatsApp मैसेज भेजना चाहते हैं?`,
+    icon: '📱',
+    okText: 'हाँ, भेजें',
+    cancelText: 'रद्द करें',
+    okClass: 'btn-success'
+  });
+  if (!ok) return;
 
   const resp = await fetch('/api/whatsapp/send', {
     method: 'POST', headers: {'Content-Type':'application/json'},
@@ -668,3 +691,40 @@ async function createBackup() {
   if (result.success) toast(`✅ बैकअप बना: ${result.backup_file.split('\\').pop()}`);
   else toast('बैकअप त्रुटि', 'error');
 }
+
+// ─── AUDIT REPORT ───
+async function loadAuditReport() {
+  try {
+    const data = await fetch('/api/reports/today').then(r => r.json());
+    document.getElementById('doc-audit-earned').textContent = '₹' + (data.total_earned || 0);
+    document.getElementById('doc-audit-patients').textContent = data.total_patients || 0;
+    document.getElementById('doc-audit-cash').textContent = '₹' + (data.cash || 0);
+    const cancSum = document.getElementById('doc-audit-cancelled-sum');
+    if (cancSum) {
+      cancSum.textContent = `${data.cancelled_count || 0} (₹${data.cancelled_amount || 0})`;
+    }
+    const badge = document.getElementById('docAuditBadge');
+    if (badge) badge.textContent = data.cancelled_count || 0;
+
+    const tbody = document.getElementById('docAuditTableBody');
+    if (tbody) {
+      const list = data.cancelled_list || [];
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:22px;color:#16a34a;font-weight:600;">✅ आज कोई भी बिल रद्द नहीं किया गया — सब सुरक्षित है (All Clean)</td></tr>';
+      } else {
+        tbody.innerHTML = list.map(b => `
+          <tr style="background:#fff1f2;">
+            <td><strong style="color:#b91c1c;">${b.bill_number}</strong></td>
+            <td><strong>${b.patient_name || '-'}</strong></td>
+            <td>${b.time || '-'}</td>
+            <td><span style="font-weight:700;color:#b91c1c;">₹${b.amount}</span></td>
+            <td style="color:#475569;font-size:0.85rem;">${b.desc || '-'}</td>
+          </tr>
+        `).join('');
+      }
+    }
+  } catch (e) {
+    console.error('Audit report load error:', e);
+  }
+}
+
