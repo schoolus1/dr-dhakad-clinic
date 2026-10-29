@@ -310,6 +310,11 @@ async function openPatient(apptId, patientId, triggerCall = true) {
   currentApptId = apptId;
   currentPatientId = patientId;
 
+  // Don't auto-call on TV if patient is already completed (just viewing record)
+  if (appt.status === 'completed') {
+    triggerCall = false;
+  }
+
   if (triggerCall) {
     fetch(`/api/appointments/${apptId}/call`, { method: 'POST' }).catch(() => {});
   }
