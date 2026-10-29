@@ -202,6 +202,26 @@
       border: 1px solid #86efac;
     }
 
+    .fullscreen-btn {
+      background: #0f172a;
+      border: 1px solid #334155;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #f8fafc;
+      transition: all 0.2s;
+    }
+    .fullscreen-btn:hover {
+      background: #1e293b;
+      border-color: #0284c7;
+      color: #38bdf8;
+    }
+
     /* ─── MAIN 3-COLUMN CONTENT ─── */
     .main-grid {
       display: grid;
@@ -780,6 +800,10 @@
           <span id="audioIcon">🔇</span>
           <span id="audioText">Sound</span>
         </button>
+        <button class="fullscreen-btn" id="fsToggleBtn" onclick="toggleFullScreen()" title="फुल स्क्रीन करें (Full Screen)">
+          <span id="fsIcon">⛶</span>
+          <span id="fsText">Full Screen</span>
+        </button>
       </div>
     </header>
 
@@ -1157,14 +1181,59 @@
       }
     }
 
-    // ─── HINDI VOICE ANNOUNCEMENT ───
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices();
-      };
+    // ─── FULLSCREEN TOGGLE ───
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.warn('Fullscreen request error:', err);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
     }
 
+    document.addEventListener('fullscreenchange', () => {
+      const icon = document.getElementById('fsIcon');
+      const text = document.getElementById('fsText');
+      if (document.fullscreenElement) {
+        if (icon) icon.textContent = '🗗';
+        if (text) text.textContent = 'Exit Screen';
+      } else {
+        if (icon) icon.textContent = '⛶';
+        if (text) text.textContent = 'Full Screen';
+      }
+    });
+
+    // ─── HINDI VOICE ANNOUNCEMENT (MP3 from Server with SpeechSynthesis Fallback) ───
+    let currentTtsAudio = null;
+
     function speakHindiAnnouncement(phrase) {
+      // 1. Play high quality MP3 voice from server (Works 100% on Smart TVs and PCs)
+      try {
+        if (currentTtsAudio) {
+          currentTtsAudio.pause();
+          currentTtsAudio = null;
+        }
+        const audioUrl = `/api/tts?text=${encodeURIComponent(phrase)}`;
+        const audio = new Audio(audioUrl);
+        currentTtsAudio = audio;
+
+        // Play 650ms after chime
+        setTimeout(() => {
+          audio.play().catch(err => {
+            console.warn('Audio MP3 play failed, falling back to browser SpeechSynthesis:', err);
+            speakHindiSpeechSynthesisFallback(phrase);
+          });
+        }, 650);
+      } catch (err) {
+        console.warn('Audio TTS init error:', err);
+        speakHindiSpeechSynthesisFallback(phrase);
+      }
+    }
+
+    function speakHindiSpeechSynthesisFallback(phrase) {
       try {
         if (!('speechSynthesis' in window)) return;
         window.speechSynthesis.resume();
@@ -1174,16 +1243,10 @@
         utter.rate = 0.85;
         utter.pitch = 1.0;
         utter.volume = 1.0;
-
-        // Try to pick Hindi voice if available
         const voices = window.speechSynthesis.getVoices();
         const hindiVoice = voices.find(v => v.lang.startsWith('hi') || v.lang.includes('IN') || v.name.includes('Hindi'));
         if (hindiVoice) utter.voice = hindiVoice;
-
-        setTimeout(() => {
-          window.speechSynthesis.resume();
-          window.speechSynthesis.speak(utter);
-        }, 750);
+        window.speechSynthesis.speak(utter);
       } catch (e) {
         console.warn('Speech synthesis warning:', e);
       }

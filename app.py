@@ -511,8 +511,21 @@ def get_tv_queue():
 
 
 
-# ─────────────────────────────────────────────
-# ROUTES: DOCTOR
+@app.route('/api/tts')
+def text_to_speech():
+    from flask import Response
+    text = request.args.get('text', '').strip()
+    if not text:
+        return '', 400
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        url = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=hi&client=tw-ob&q={requests.utils.quote(text)}"
+        resp = requests.get(url, headers=headers, timeout=6)
+        if resp.status_code == 200 and resp.content:
+            return Response(resp.content, mimetype='audio/mpeg')
+    except Exception as e:
+        print(f"[WARN] TTS proxy error: {e}")
+    return '', 404
 # ─────────────────────────────────────────────
 
 @app.route('/doctor')
