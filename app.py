@@ -23,7 +23,13 @@ db = SQLAlchemy(app)
 # DATABASE MODELS
 # ─────────────────────────────────────────────
 
-class User(db.Model):
+class BaseModel(db.Model):
+    __abstract__ = True
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+class User(BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
@@ -34,7 +40,7 @@ class User(db.Model):
     def check_password(self, pw): return check_password_hash(self.password_hash, pw)
 
 
-class Patient(db.Model):
+class Patient(BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     mobile = db.Column(db.String(15), nullable=False)
@@ -51,18 +57,20 @@ class Patient(db.Model):
     bills = db.relationship('Bill', backref='patient', lazy=True)
 
 
-class Appointment(db.Model):
+class Appointment(BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
     token_number = db.Column(db.Integer, nullable=False)
     appointment_date = db.Column(db.Date, default=date.today)
     status = db.Column(db.String(20), default='waiting')  # waiting, in_progress, completed, cancelled
+    is_priority = db.Column(db.Boolean, default=False)    # Priority / Urgent insertion
+    is_followup = db.Column(db.Boolean, default=False)    # 14-day free follow-up
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     visit = db.relationship('Visit', backref='appointment', uselist=False)
 
 
-class Visit(db.Model):
+class Visit(BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     appointment_id = db.Column(db.Integer, db.ForeignKey('appointment.id'), nullable=False)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
@@ -80,7 +88,7 @@ class Visit(db.Model):
     is_finalized = db.Column(db.Boolean, default=False)
 
 
-class Prescription(db.Model):
+class Prescription(BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     visit_id = db.Column(db.Integer, db.ForeignKey('visit.id'), nullable=False)
     medicine_name = db.Column(db.String(150))
@@ -90,7 +98,7 @@ class Prescription(db.Model):
     instructions = db.Column(db.String(200))
 
 
-class Medicine(db.Model):
+class Medicine(BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), unique=True, nullable=False)
     default_dose = db.Column(db.String(80), default='1-0-1 (सुबह-शाम)')
@@ -101,7 +109,7 @@ class Medicine(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-class Bill(db.Model):
+class Bill(BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     bill_number = db.Column(db.String(20), unique=True, nullable=False)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'), nullable=False)
@@ -114,12 +122,13 @@ class Bill(db.Model):
     amount_paid = db.Column(db.Float, default=0)
     balance = db.Column(db.Float, default=0)
     payment_mode = db.Column(db.String(20))   # cash, upi, card
+    collected_by = db.Column(db.String(100), default='देवेन्द्र (Devendra)') # Staff cashier
     refund = db.Column(db.Float, default=0)
     status = db.Column(db.String(20), default='paid')  # paid, partial, refunded
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-class WhatsAppLog(db.Model):
+class WhatsAppLog(BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.id'))
     mobile = db.Column(db.String(15))
@@ -129,7 +138,7 @@ class WhatsAppLog(db.Model):
     batch_id = db.Column(db.String(50))
 
 
-class Settings(db.Model):
+class Settings(BaseModel):
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(50), unique=True)
     value = db.Column(db.Text)
@@ -1110,6 +1119,16 @@ def init_db():
                 conn.execute(text("ALTER TABLE patient ADD COLUMN district VARCHAR(100)"))
             if 'block' not in pcols:
                 conn.execute(text("ALTER TABLE patient ADD COLUMN block VARCHAR(100)"))
+            # Migration: appointment table (priority & followup)
+            acols = [row[1] for row in conn.execute(text("PRAGMA table_info(appointment)")).fetchall()]
+            if 'is_priority' not in acols:
+                conn.execute(text("ALTER TABLE appointment ADD COLUMN is_priority BOOLEAN DEFAULT 0"))
+            if 'is_followup' not in acols:
+                conn.execute(text("ALTER TABLE appointment ADD COLUMN is_followup BOOLEAN DEFAULT 0"))
+            # Migration: bill table (collected_by)
+            bcols = [row[1] for row in conn.execute(text("PRAGMA table_info(bill)")).fetchall()]
+            if 'collected_by' not in bcols:
+                conn.execute(text("ALTER TABLE bill ADD COLUMN collected_by VARCHAR(100) DEFAULT 'देवेन्द्र (Devendra)'"))
             conn.commit()
     except Exception as e:
         pass
