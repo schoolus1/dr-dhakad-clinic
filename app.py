@@ -261,14 +261,38 @@ def get_patients():
 @login_required
 def add_patient():
     data = request.json or {}
+    name = (data.get('name') or '').strip()
     mobile = (data.get('mobile') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'message': 'मरीज का नाम दर्ज करना अनिवार्य है'}), 400
     if len(mobile) != 10 or not mobile.isdigit():
         return jsonify({'success': False, 'message': 'मोबाइल नंबर केवल 10 अंकों का (संख्यात्मक) होना अनिवार्य है'}), 400
-    existing = Patient.query.filter_by(mobile=mobile).first()
-    if existing:
-        return jsonify({'success': False, 'message': 'यह मोबाइल नंबर पहले से दर्ज है', 'patient_id': existing.id})
+
+    # Exact match: same name and same mobile number
+    exact_match = Patient.query.filter(
+        Patient.mobile == mobile,
+        db.func.lower(Patient.name) == name.lower()
+    ).first()
+    if exact_match:
+        return jsonify({
+            'success': False,
+            'is_duplicate': True,
+            'message': f'मरीज "{name}" (मोबाइल: {mobile}) पहले से दर्ज है!',
+            'patient_id': exact_match.id
+        })
+
+    # Shared mobile check: family members sharing the same mobile number
+    family = Patient.query.filter_by(mobile=mobile).all()
+    if family and not data.get('force_new'):
+        family_str = ", ".join([f"{p.name} ({p.age or '-'} वर्ष)" for p in family])
+        return jsonify({
+            'success': False,
+            'is_family_prompt': True,
+            'message': f'यह मोबाइल नंबर ({mobile}) पहले से परिवार के सदस्य के रूप में दर्ज है:\n• {family_str}\n\nक्या आप इसी नंबर पर नया पारिवारिक सदस्य "{name}" जोड़ना चाहते हैं?'
+        })
+
     p = Patient(
-        name=data['name'], mobile=mobile,
+        name=name, mobile=mobile,
         age=data.get('age'), gender=data.get('gender'),
         address=data.get('address', ''), blood_group=data.get('blood_group', ''),
         state=data.get('state', 'Madhya Pradesh'),
@@ -807,26 +831,28 @@ def create_bill():
     data = request.json
     patient_id = data['patient_id']
 
-    # Anti-Duplicate Check: Prevent accidental duplicate bills today
-    if not data.get('force_duplicate'):
-        today = date.today()
-        existing = Bill.query.filter(
-            Bill.patient_id == patient_id,
-            db.func.date(Bill.created_at) == today,
-            Bill.status.notin_(['cancelled', 'refunded'])
-        ).first()
-        if existing:
+    consultation_fee = float(data.get('consultation_fee', 0))
+    extra = float(data.get('extra_charges', 0))
+    discount = float(data.get('discount', 0))
+
+    # Anti-Duplicate Check: Prevent accidental duplicate consultation fee today
+    today = date.today()
+    existing = Bill.query.filter(
+        Bill.patient_id == patient_id,
+        db.func.date(Bill.created_at) == today,
+        Bill.status.notin_(['cancelled', 'refunded'])
+    ).first()
+
+    if existing and not data.get('force_duplicate'):
+        if consultation_fee > 0:
             return jsonify({
                 'success': False,
                 'is_duplicate': True,
                 'existing_bill_number': existing.bill_number,
                 'existing_amount': existing.amount_paid,
-                'message': f'इस मरीज का आज पहले से बिल #{existing.bill_number} (₹{existing.amount_paid}) बना हुआ है!'
+                'message': f'इस मरीज का आज पहले से बिल #{existing.bill_number} (₹{existing.amount_paid}) बना हुआ है। परामर्श शुल्क दोबारा नहीं लिया जा सकता। क्या आप परामर्श शुल्क ₹0 करके केवल अतिरिक्त प्रक्रिया (ECG, ड्रेसिंग आदि) का बिल बनाना चाहते हैं?'
             }), 409
 
-    consultation_fee = float(data.get('consultation_fee', 0))
-    extra = float(data.get('extra_charges', 0))
-    discount = float(data.get('discount', 0))
     total = consultation_fee + extra - discount
     paid = float(data.get('amount_paid', 0))
     balance = total - paid

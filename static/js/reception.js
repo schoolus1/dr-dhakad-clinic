@@ -261,7 +261,7 @@ function openNewPatientModal() {
   openModal('newPatientModal');
 }
 
-async function saveNewPatient() {
+async function saveNewPatient(forceNew = false) {
   const name = document.getElementById('np_name').value.trim();
   const mobile = document.getElementById('np_mobile').value.trim();
   if (!name || !mobile) { toast('नाम और मोबाइल जरूरी है', 'error'); return; }
@@ -275,7 +275,8 @@ async function saveNewPatient() {
     state: document.getElementById('np_state').value || 'Madhya Pradesh',
     district: document.getElementById('np_district').value,
     block: document.getElementById('np_block').value,
-    whatsapp_consent: document.getElementById('np_wa').checked
+    whatsapp_consent: document.getElementById('np_wa').checked,
+    force_new: forceNew
   };
   const resp = await fetch('/api/patients', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
   const result = await resp.json();
@@ -286,14 +287,27 @@ async function saveNewPatient() {
     // Offer to book
     quickBook(result.patient_id, name, mobile);
     showSection('appointments');
-  } else {
-    toast(result.message || 'त्रुटि हुई', 'error');
+  } else if (result.is_family_prompt) {
+    const ok = await showConfirmDialog({
+      title: 'पारिवारिक सदस्य (Family Member)',
+      message: result.message,
+      icon: '👨‍👩‍👧',
+      okText: '➕ हाँ, नया सदस्य जोड़ें',
+      cancelText: 'रद्द करें',
+      okClass: 'btn-success'
+    });
+    if (ok) {
+      saveNewPatient(true);
+    }
+  } else if (result.is_duplicate) {
+    toast(result.message, 'warning');
     if (result.patient_id) {
-      // Already exists
       quickBook(result.patient_id, name, mobile);
       closeModal('newPatientModal');
       showSection('appointments');
     }
+  } else {
+    toast(result.message || 'त्रुटि हुई', 'error');
   }
 }
 
@@ -305,8 +319,13 @@ async function searchApptPatient(q) {
   if (!patients.length) { el.innerHTML = '<div style="padding:10px;color:var(--text2);">कोई मरीज नहीं मिला</div>'; el.style.display = ''; return; }
   el.style.display = '';
   el.innerHTML = patients.map(p => `
-    <div style="padding:10px;cursor:pointer;border-bottom:1px solid var(--border);" onmousedown="selectApptPatient(${p.id},'${p.name}','${p.mobile}')">
-      <strong>${p.name}</strong> &nbsp;<span style="color:var(--text2);">${p.mobile}</span>
+    <div style="padding:10px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;" onmousedown="selectApptPatient(${p.id},'${p.name}','${p.mobile}')">
+      <div>
+        <strong>👤 ${p.name}</strong>
+        <span style="color:var(--text2);font-size:0.85rem;margin-left:6px;">(${p.age || '-'} वर्ष, ${p.gender || '-'})</span>
+        <div style="color:var(--text2);font-size:0.8rem;">📱 ${p.mobile} ${p.blood_group ? `• 🩸 ${p.blood_group}` : ''}</div>
+      </div>
+      <span class="btn btn-sm btn-outline">चुनें</span>
     </div>`).join('');
 }
 
@@ -439,8 +458,13 @@ async function searchBillPatient(q) {
   if (!patients.length) { el.innerHTML = '<div style="padding:10px;color:var(--text2);">कोई मरीज नहीं मिला</div>'; el.style.display=''; return; }
   el.style.display = '';
   el.innerHTML = patients.map(p => `
-    <div style="padding:10px;cursor:pointer;border-bottom:1px solid var(--border);" onmousedown="selectBillPatient(${p.id},'${p.name}','${p.mobile}')">
-      <strong>${p.name}</strong> &nbsp;<span style="color:var(--text2);">${p.mobile}</span>
+    <div style="padding:10px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;" onmousedown="selectBillPatient(${p.id},'${p.name}','${p.mobile}')">
+      <div>
+        <strong>👤 ${p.name}</strong>
+        <span style="color:var(--text2);font-size:0.85rem;margin-left:6px;">(${p.age || '-'} वर्ष, ${p.gender || '-'})</span>
+        <div style="color:var(--text2);font-size:0.8rem;">📱 ${p.mobile}</div>
+      </div>
+      <span class="btn btn-sm btn-outline">चुनें</span>
     </div>`).join('');
 }
 
@@ -469,10 +493,19 @@ function quickBill(pid, name, apptId) {
 
 async function applyBillingPatientDefaults(pid) {
   try {
-    const [settings, rxStatus] = await Promise.all([
+    const [settings, rxStatus, existingBills] = await Promise.all([
       fetch('/api/settings').then(r => r.json()),
-      fetch(`/api/patients/${pid}/prescription-status`).then(r => r.json())
+      fetch(`/api/patients/${pid}/prescription-status`).then(r => r.json()),
+      fetch(`/api/bills/patient/${pid}`).then(r => r.json()).catch(() => [])
     ]);
+
+    // Check if patient already has an active bill created today
+    const now = new Date();
+    const d = String(now.getDate()).padStart(2, '0');
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const y = now.getFullYear();
+    const todayPrefix = `${d}-${m}-${y}`;
+    const todayBill = (existingBills || []).find(b => b.created_at && b.created_at.startsWith(todayPrefix) && b.status !== 'cancelled' && b.status !== 'refunded');
 
     // Populate Cashier Dropdown if available
     if (settings.billing_staff_list) {
@@ -487,9 +520,12 @@ async function applyBillingPatientDefaults(pid) {
       }
     }
 
-    // Follow-up 14-day validity check
+    // Follow-up 14-day validity & Today already billed check
     const feeInput = document.getElementById('billConsultFee');
-    if (rxStatus.is_free) {
+    if (todayBill) {
+      feeInput.value = 0;
+      toast(`ℹ️ इस मरीज का आज पहले से बिल #${todayBill.bill_number} बना है। परामर्श शुल्क ₹0 कर दिया गया है (केवल अतिरिक्त चार्ज जोड़ें)।`, 'info');
+    } else if (rxStatus.is_free) {
       feeInput.value = 0;
       toast(`🟢 ${rxStatus.badge}`, 'info');
     } else {
@@ -609,14 +645,17 @@ async function createBill() {
     loadPatientBills(currentBillPatientId);
   } else if (result.is_duplicate) {
     const ok = await showConfirmDialog({
-      title: 'बिल पहले से मौजूद है',
-      message: `${result.message}\n\nक्या आप वाकई इस मरीज के लिए दूसरा नया बिल बनाना चाहते हैं?`,
+      title: 'परामर्श शुल्क पहले से दर्ज है',
+      message: `${result.message}`,
       icon: '🧾',
-      okText: 'हाँ, नया बिल बनाएं',
+      okText: 'हाँ, परामर्श ₹0 करके केवल अतिरिक्त चार्ज बिल बनाएं',
       cancelText: 'रद्द करें',
       okClass: 'btn-warning'
     });
     if (ok) {
+      document.getElementById('billConsultFee').value = 0;
+      calcBill();
+      data.consultation_fee = 0;
       data.force_duplicate = true;
       const retryResp = await fetch('/api/bills', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
       const retryResult = await retryResp.json();

@@ -7,6 +7,7 @@ let currentPatientId = null;
 let histCurrentPatientId = null;
 let rxItems = [];
 let allMedicines = [];
+let lastPrescriptionItems = [];
 
 // ─── INIT ───
 window.addEventListener('DOMContentLoaded', () => {
@@ -371,6 +372,22 @@ function removeMedItem(index) {
   renderRxTable();
 }
 
+function repeatPreviousRx() {
+  if (!lastPrescriptionItems || !lastPrescriptionItems.length) {
+    toast('कोई पिछली दवाई उपलब्ध नहीं है', 'info');
+    return;
+  }
+  rxItems = lastPrescriptionItems.map(r => ({
+    medicine_name: r.medicine_name,
+    dose: r.dose,
+    timing: r.timing,
+    days: r.days,
+    instructions: r.instructions || ''
+  }));
+  renderRxTable();
+  toast('✅ पिछली पर्ची की दवाइयाँ लोड हो गईं! आप बदलाव या नई दवाई जोड़ सकते हैं।');
+}
+
 function renderRxTable() {
   const tbody = document.getElementById('rxTableBody');
   if (!tbody) return;
@@ -466,16 +483,19 @@ async function openPatient(apptId, patientId, triggerCall = true) {
 
   // Check history for previous visits
   const history = await fetch(`/api/patients/${patientId}/history`).then(r => r.json());
-  const prevVisits = history.filter(h => h.appointment_id !== apptId);
-  const prevBanner = document.getElementById('prevVisitSummary');
-  const prevBtn = document.getElementById('prevVisitBtn');
-  if (prevVisits.length) {
+  const prevVisits = history.filter(h => h.appointment_id !== apptId && h.prescriptions && h.prescriptions.length > 0);
+  const repeatBanner = document.getElementById('repeatRxBanner');
+  if (prevVisits.length > 0) {
     const last = prevVisits[0];
-    prevBanner.innerHTML = `<strong>${last.date}:</strong> ${last.diagnosis || 'परामर्श'} &bull; ${last.prescriptions.length} दवाइयाँ`;
-    if (prevBtn) prevBtn.style.display = 'inline-block';
+    lastPrescriptionItems = last.prescriptions;
+    const rxText = document.getElementById('repeatRxText');
+    const rxDetails = document.getElementById('repeatRxDetails');
+    if (rxText) rxText.textContent = `पिछली पर्ची (${last.date}): ${last.diagnosis || 'परामर्श'}`;
+    if (rxDetails) rxDetails.textContent = `${last.prescriptions.length} दवाइयाँ: ${last.prescriptions.map(m => m.medicine_name).join(', ')}`;
+    if (repeatBanner) repeatBanner.style.display = 'flex';
   } else {
-    prevBanner.textContent = 'कोई पुरानी पर्ची उपलब्ध नहीं (First Visit)';
-    if (prevBtn) prevBtn.style.display = 'none';
+    lastPrescriptionItems = [];
+    if (repeatBanner) repeatBanner.style.display = 'none';
   }
 
   // Check if today already has a draft or saved visit
@@ -517,6 +537,9 @@ function clearVisitForm() {
     if (el) el.value = '';
   });
   rxItems = [];
+  lastPrescriptionItems = [];
+  const banner = document.getElementById('repeatRxBanner');
+  if (banner) banner.style.display = 'none';
   renderRxTable();
 }
 
