@@ -490,12 +490,14 @@ def get_tv_queue():
         if active_appt:
             import time
             now_ms = int(time.time() * 1000)
-            if not tv_call_state.get('timestamp') or tv_call_state.get('token') != active_appt.token_number:
+            if not tv_call_state.get('token') or tv_call_state.get('token') != active_appt.token_number:
                 tv_call_state['token'] = active_appt.token_number
                 tv_call_state['name'] = active_appt.patient.name if active_appt.patient else 'मरीज'
-                tv_call_state['timestamp'] = now_ms
-            start_ts = tv_call_state.get('timestamp', now_ms)
-            elapsed_seconds = max(0, int((now_ms - start_ts) / 1000))
+                # Only real doctor call actions generate a fresh announcement timestamp
+                if not tv_call_state.get('timestamp'):
+                    tv_call_state['timestamp'] = 0
+            start_ts = tv_call_state.get('timestamp') or now_ms
+            elapsed_seconds = max(0, int((now_ms - start_ts) / 1000)) if tv_call_state.get('timestamp') else 0
 
         active_start_time = tv_call_state.get('timestamp') if active_appt else None
         return jsonify({
