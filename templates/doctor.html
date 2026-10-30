@@ -451,6 +451,16 @@
               <label class="form-label">डिफॉल्ट Consultation Fee (₹)</label>
               <input type="number" class="form-control" id="set_fee">
             </div>
+            <div class="form-group">
+              <label class="form-label">पर्चा वैधता अवधि (दिन / Free Follow-up Days)</label>
+              <input type="number" class="form-control" id="set_prescription_validity_days" value="14" placeholder="14">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">बिलिंग कैशियर / स्टाफ नाम (अल्पविराम से अलग करें)</label>
+              <input type="text" class="form-control" id="set_billing_staff_list" placeholder="देवेन्द्र (Devendra), रानी (Rani), मोनिका (Monika)">
+            </div>
           </div>
           <hr class="divider">
           <div class="card-title mb-2">📱 WhatsApp Business API (वैकल्पिक)</div>
@@ -616,6 +626,22 @@
     <div style="display:flex; gap:12px; justify-content:center;">
       <button type="button" class="btn btn-outline" id="confirmModalCancelBtn" style="min-width:110px; padding:9px 18px; font-weight:600; border-radius:8px;">रद्द करें (Cancel)</button>
       <button type="button" class="btn btn-success" id="confirmModalOkBtn" style="min-width:140px; padding:9px 18px; font-weight:600; border-radius:8px; box-shadow:0 3px 10px rgba(16,185,129,0.35);">✅ हाँ, पूर्ण करें</button>
+    </div>
+  </div>
+</div>
+
+<!-- In-Page Print Modal (No New Tabs) -->
+<div class="modal-overlay" id="printModal">
+  <div class="modal" style="max-width:920px; width:95%; height:90vh; display:flex; flex-direction:column; padding:0; overflow:hidden; border-radius:12px;">
+    <div class="modal-header" style="padding:12px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--bg2);">
+      <span class="modal-title" id="printModalTitle" style="font-size:1.1rem; font-weight:700;">🖨️ पर्चा प्रिंट प्रिव्यू (Prescription Print)</span>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-primary btn-sm" onclick="triggerPrintFrame()">🖨️ अभी प्रिंट करें (Print)</button>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('printModal')">✕ बंद करें</button>
+      </div>
+    </div>
+    <div style="flex:1; width:100%; height:100%; background:#525659;">
+      <iframe id="printModalFrame" src="about:blank" style="width:100%; height:100%; border:none;"></iframe>
     </div>
   </div>
 </div>

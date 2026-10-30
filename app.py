@@ -260,12 +260,15 @@ def get_patients():
 @app.route('/api/patients', methods=['POST'])
 @login_required
 def add_patient():
-    data = request.json
-    existing = Patient.query.filter_by(mobile=data.get('mobile')).first()
+    data = request.json or {}
+    mobile = (data.get('mobile') or '').strip()
+    if len(mobile) != 10 or not mobile.isdigit():
+        return jsonify({'success': False, 'message': 'मोबाइल नंबर केवल 10 अंकों का (संख्यात्मक) होना अनिवार्य है'}), 400
+    existing = Patient.query.filter_by(mobile=mobile).first()
     if existing:
         return jsonify({'success': False, 'message': 'यह मोबाइल नंबर पहले से दर्ज है', 'patient_id': existing.id})
     p = Patient(
-        name=data['name'], mobile=data['mobile'],
+        name=data['name'], mobile=mobile,
         age=data.get('age'), gender=data.get('gender'),
         address=data.get('address', ''), blood_group=data.get('blood_group', ''),
         state=data.get('state', 'Madhya Pradesh'),
@@ -276,6 +279,41 @@ def add_patient():
     db.session.add(p)
     db.session.commit()
     return jsonify({'success': True, 'patient_id': p.id})
+
+@app.route('/api/patients/<int:pid>/prescription-status', methods=['GET'])
+@login_required
+def patient_prescription_status(pid):
+    p = Patient.query.get_or_404(pid)
+    validity_days = int(get_setting('prescription_validity_days', '14'))
+    last_visit = Visit.query.filter_by(patient_id=pid).order_by(Visit.visit_date.desc()).first()
+    if not last_visit:
+        last_appt = Appointment.query.filter_by(patient_id=pid).order_by(Appointment.appointment_date.desc()).first()
+        last_date = last_appt.appointment_date if last_appt else None
+    else:
+        last_date = last_visit.visit_date.date()
+
+    fee_setting = int(get_setting('consultation_fee', '300'))
+    if not last_date:
+        return jsonify({
+            'has_previous': False,
+            'is_valid': False,
+            'days_ago': None,
+            'is_free': False,
+            'fee': fee_setting,
+            'badge': 'नया मरीज (First Visit) — परामर्श शुल्क लागू'
+        })
+
+    days_ago = (date.today() - last_date).days
+    is_valid = (days_ago <= validity_days)
+    return jsonify({
+        'has_previous': True,
+        'is_valid': is_valid,
+        'days_ago': days_ago,
+        'is_free': is_valid,
+        'last_date': last_date.strftime('%d-%m-%Y'),
+        'fee': 0 if is_valid else fee_setting,
+        'badge': f'🟢 मान्य पर्चा ({days_ago} दिन पूर्व) — फॉलो-अप फ्री (₹0)' if is_valid else f'🔴 पर्चा समाप्त ({days_ago} दिन पूर्व) — नया परामर्श शुल्क'
+    })
 
 @app.route('/api/patients/<int:pid>', methods=['GET'])
 @login_required
@@ -306,9 +344,12 @@ def get_patient(pid):
 @login_required
 def update_patient(pid):
     p = Patient.query.get_or_404(pid)
-    data = request.json
+    data = request.json or {}
+    mobile = (data.get('mobile') or '').strip()
+    if mobile and (len(mobile) != 10 or not mobile.isdigit()):
+        return jsonify({'success': False, 'message': 'मोबाइल नंबर केवल 10 अंकों का होना अनिवार्य है'}), 400
     p.name = data.get('name', p.name)
-    p.mobile = data.get('mobile', p.mobile)
+    if mobile: p.mobile = mobile
     p.age = data.get('age', p.age)
     p.gender = data.get('gender', p.gender)
     p.address = data.get('address', p.address)
@@ -320,7 +361,7 @@ def update_patient(pid):
 @app.route('/api/appointments', methods=['POST'])
 @login_required
 def book_appointment():
-    data = request.json
+    data = request.json or {}
     pid = data.get('patient_id')
     appt_date = date.fromisoformat(data.get('date', date.today().isoformat()))
     # Check if already booked today
@@ -328,16 +369,34 @@ def book_appointment():
     if existing:
         return jsonify({'success': False, 'message': 'मरीज का आज के लिए अपॉइंटमेंट पहले से है', 'token': existing.token_number})
     token = next_token()
-    appt = Appointment(patient_id=pid, token_number=token, appointment_date=appt_date, notes=data.get('notes', ''))
+    appt = Appointment(
+        patient_id=pid,
+        token_number=token,
+        appointment_date=appt_date,
+        is_priority=bool(data.get('is_priority', False)),
+        is_followup=bool(data.get('is_followup', False)),
+        notes=data.get('notes', '')
+    )
     db.session.add(appt)
     db.session.commit()
     return jsonify({'success': True, 'token': token, 'appointment_id': appt.id})
+
+@app.route('/api/appointments/<int:aid>/toggle-priority', methods=['POST'])
+@login_required
+def toggle_appointment_priority(aid):
+    a = Appointment.query.get_or_404(aid)
+    a.is_priority = not bool(a.is_priority)
+    db.session.commit()
+    return jsonify({'success': True, 'is_priority': a.is_priority, 'token': a.token_number})
 
 @app.route('/api/queue', methods=['GET'])
 @login_required
 def get_queue():
     today = date.today()
-    appts = Appointment.query.filter_by(appointment_date=today).order_by(Appointment.token_number).all()
+    appts = Appointment.query.filter_by(appointment_date=today).order_by(
+        Appointment.is_priority.desc(),
+        Appointment.token_number.asc()
+    ).all()
     result = []
     for a in appts:
         result.append({
@@ -349,6 +408,8 @@ def get_queue():
             'age': a.patient.age,
             'gender': a.patient.gender,
             'status': a.status,
+            'is_priority': bool(a.is_priority),
+            'is_followup': bool(a.is_followup),
             'notes': a.notes
         })
     return jsonify(result)
@@ -403,7 +464,11 @@ def call_appointment(aid):
 def call_next_appointment():
     global tv_call_state
     today = date.today()
-    next_appt = Appointment.query.filter_by(appointment_date=today, status='waiting').order_by(Appointment.token_number).first()
+    # Priority patients called first, then regular queue
+    next_appt = Appointment.query.filter_by(appointment_date=today, status='waiting').order_by(
+        Appointment.is_priority.desc(),
+        Appointment.token_number.asc()
+    ).first()
     if not next_appt:
         return jsonify({'success': False, 'message': 'कतार में कोई प्रतीक्षारत मरीज नहीं है (No waiting patients in queue)'}), 404
     # Mark previous in_progress appts as completed so queue advances forward seamlessly
@@ -440,7 +505,9 @@ def get_tv_settings_dict():
             'doctor_bullet4': get_setting('doctor_bullet4', '15+ वर्षों का समर्पित व विश्वसनीय अनुभव'),
             'tv_timings': get_setting('tv_timings', 'सुबह: 10:00 - 1:30 | शाम: 5:00 - 8:00 (रवि: अवकाश)'),
             'tv_notice': get_setting('tv_notice', 'कृपया अपनी पुरानी पर्ची व जांच रिपोर्ट साथ रखें • नया नंबर लगवाने हेतु रिसेप्शन पर संपर्क करें • क्लिनिक का समय: सुबह 10:00 से 1:30 एवं शाम 5:00 से 8:00 तक • Dr. Dhakad Clinic — आपकी सेहत हमारा संकल्प!'),
-            'tv_services': get_setting('tv_services', 'परामर्श (Consultation), ECG जाँच, बीपी / शुगर जाँच, रक्त जाँच (Lab), नेबुलाइजर, दवा परामर्श, फॉलो-अप देखभाल')
+            'tv_services': get_setting('tv_services', 'परामर्श (Consultation), ECG जाँच, बीपी / शुगर जाँच, रक्त जाँच (Lab), नेबुलाइजर, दवा परामर्श, फॉलो-अप देखभाल'),
+            'prescription_validity_days': get_setting('prescription_validity_days', '14'),
+            'billing_staff_list': get_setting('billing_staff_list', 'देवेन्द्र (Devendra), रानी (Rani), मोनिका (Monika)')
         }
     except Exception:
         return {
@@ -457,7 +524,9 @@ def get_tv_settings_dict():
             'doctor_bullet4': '15+ वर्षों का समर्पित व विश्वसनीय अनुभव',
             'tv_timings': 'सुबह: 10:00 - 1:30 | शाम: 5:00 - 8:00 (रवि: अवकाश)',
             'tv_notice': 'कृपया अपनी पुरानी पर्ची व जांच रिपोर्ट साथ रखें • नया नंबर लगवाने हेतु रिसेप्शन पर संपर्क करें • क्लिनिक का समय: सुबह 10:00 से 1:30 एवं शाम 5:00 से 8:00 तक • Dr. Dhakad Clinic — आपकी सेहत हमारा संकल्प!',
-            'tv_services': 'परामर्श (Consultation), ECG जाँच, बीपी / शुगर जाँच, रक्त जाँच (Lab), नेबुलाइजर, दवा परामर्श, फॉलो-अप देखभाल'
+            'tv_services': 'परामर्श (Consultation), ECG जाँच, बीपी / शुगर जाँच, रक्त जाँच (Lab), नेबुलाइजर, दवा परामर्श, फॉलो-अप देखभाल',
+            'prescription_validity_days': '14',
+            'billing_staff_list': 'देवेन्द्र (Devendra), रानी (Rani), मोनिका (Monika)'
         }
 
 @app.route('/tv')
@@ -774,6 +843,7 @@ def create_bill():
         amount_paid=paid,
         balance=balance,
         payment_mode=data.get('payment_mode', 'cash'),
+        collected_by=data.get('collected_by', 'देवेन्द्र (Devendra)'),
         status='partial' if balance > 0 else 'paid'
     )
     db.session.add(bill)
@@ -792,6 +862,7 @@ def get_bill(bid):
         'extra_charge_desc': b.extra_charge_desc, 'discount': b.discount,
         'total_amount': b.total_amount, 'amount_paid': b.amount_paid,
         'balance': b.balance, 'payment_mode': b.payment_mode,
+        'collected_by': b.collected_by or 'देवेन्द्र (Devendra)',
         'refund': b.refund, 'status': b.status,
         'created_at': b.created_at.strftime('%d-%m-%Y %H:%M')
     })

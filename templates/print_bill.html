@@ -178,6 +178,7 @@
       {% elif bill.status == 'partial' %}⚠️ आंशिक भुगतान
       {% else %}🔄 रिफंड{% endif %}
     </div>
+    <div style="margin-top:4px;"><strong>राशि प्राप्तकर्ता (Cashier):</strong> {{ bill.collected_by or 'देवेन्द्र (Devendra)' }}</div>
   </div>
 
   <div class="footer">

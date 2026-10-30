@@ -132,13 +132,17 @@ async function loadQueue() {
   }
   el.innerHTML = queue.map(a => {
     const isCancelled = a.status === 'cancelled';
+    const isPri = a.is_priority;
     return `
     <div class="queue-item ${currentApptId === a.id ? 'active' : ''} ${isCancelled ? 'cancelled-item' : ''}" 
-         style="${isCancelled ? 'opacity:0.6;background:#fef2f2;cursor:not-allowed;' : ''}"
+         style="${isCancelled ? 'opacity:0.6;background:#fef2f2;cursor:not-allowed;' : isPri ? 'border-left: 4px solid #f59e0b; background:#fffbeb;' : ''}"
          onclick="${isCancelled ? `toast('⚠️ टोकन #${a.token} (${a.name}) रद्द (Cancelled) हो चुका है', 'error')` : `openPatient(${a.id}, ${a.patient_id})`}">
-      <div class="token-badge" style="${isCancelled ? 'background:#ef4444;color:#fff;' : ''}">${a.token}</div>
+      <div class="token-badge" style="${isCancelled ? 'background:#ef4444;color:#fff;' : isPri ? 'background:#d97706;color:#fff;' : ''}">${a.token}</div>
       <div class="queue-info">
-        <div class="queue-name" style="${isCancelled ? 'text-decoration:line-through;color:#991b1b;' : ''}">${a.name}</div>
+        <div class="queue-name" style="${isCancelled ? 'text-decoration:line-through;color:#991b1b;' : ''}">
+          ${a.name}
+          ${isPri ? '<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;font-size:0.75rem;margin-left:6px;">⭐ VIP प्राथमिकता</span>' : ''}
+        </div>
         <div class="queue-meta">${a.age || '-'} वर्ष/Y &bull; ${a.gender || '-'} &bull; ${a.mobile}</div>
       </div>
       <span class="badge badge-${a.status.replace('_','-')}">${statusLabel(a.status)}</span>
@@ -557,8 +561,8 @@ async function finalizeAndPrint() {
   await fetch(`/api/visits/${currentVisitId}/finalize`, { method: 'POST' });
   const printVid = currentVisitId;
 
-  toast('✅ पर्ची फाइनल हो गई! प्रिंट विंडो खुल रही है...');
-  window.open(`/print/prescription/${printVid}`, '_blank');
+  toast('✅ पर्ची फाइनल हो गई!');
+  openPrintPopup(`/print/prescription/${printVid}`, 'पर्चा प्रिंट');
 
   // Reset and prepare for next patient
   currentApptId = null;
@@ -620,7 +624,7 @@ async function viewHistory() {
           `).join('')}
         </div>` : ''}
       <div class="d-flex gap-1 mt-1">
-        <button class="btn btn-sm btn-outline" onclick="window.open('/print/prescription/${v.visit_id}','_blank')">🖨️ प्रिंट (Print)</button>
+        <button class="btn btn-sm btn-outline" onclick="openPrintPopup('/print/prescription/${v.visit_id}', 'पर्चा प्रिंट')">🖨️ प्रिंट (Print)</button>
         ${!v.is_finalized ? `<button class="btn btn-sm btn-primary" onclick="copyPrescription(${v.visit_id})">📋 कॉपी करें (Copy)</button>` : ''}
       </div>
     </div>`).join('');
@@ -696,7 +700,7 @@ async function loadPatientHistory(pid, name) {
             <div class="text-small">• ${rx.medicine_name} ${rx.dose} — ${rx.timing} — ${rx.days || '-'} दिन</div>
           `).join('')}
         </div>` : ''}
-      <button class="btn btn-sm btn-outline mt-1" onclick="window.open('/print/prescription/${v.visit_id}','_blank')">🖨️ प्रिंट</button>
+      <button class="btn btn-sm btn-outline mt-1" onclick="openPrintPopup('/print/prescription/${v.visit_id}', 'पर्चा प्रिंट')">🖨️ प्रिंट</button>
     </div>`).join('');
 }
 
@@ -809,6 +813,12 @@ async function loadSettings() {
   // TV Screen Customization settings
   if (document.getElementById('set_doctor_qual')) document.getElementById('set_doctor_qual').value = s.doctor_qual || '';
   if (document.getElementById('set_doctor_role')) document.getElementById('set_doctor_role').value = s.doctor_role || '';
+  if (document.getElementById('set_prescription_validity_days')) {
+    document.getElementById('set_prescription_validity_days').value = s.prescription_validity_days || '14';
+  }
+  if (document.getElementById('set_billing_staff_list')) {
+    document.getElementById('set_billing_staff_list').value = s.billing_staff_list || 'देवेन्द्र (Devendra), रानी (Rani), मोनिका (Monika)';
+  }
   if (document.getElementById('set_doctor_photo')) {
     document.getElementById('set_doctor_photo').value = s.doctor_photo || '';
     const prev = document.getElementById('tvDocPhotoPreview');
@@ -865,6 +875,8 @@ async function saveSettings() {
     consultation_fee: document.getElementById('set_fee').value,
     wa_token: document.getElementById('set_wa_token').value,
     wa_phone_id: document.getElementById('set_wa_phone_id').value,
+    prescription_validity_days: document.getElementById('set_prescription_validity_days') ? document.getElementById('set_prescription_validity_days').value : '14',
+    billing_staff_list: document.getElementById('set_billing_staff_list') ? document.getElementById('set_billing_staff_list').value : 'देवेन्द्र (Devendra), रानी (Rani), मोनिका (Monika)',
     doctor_qual: document.getElementById('set_doctor_qual') ? document.getElementById('set_doctor_qual').value : '',
     doctor_role: document.getElementById('set_doctor_role') ? document.getElementById('set_doctor_role').value : '',
     doctor_photo: document.getElementById('set_doctor_photo') ? document.getElementById('set_doctor_photo').value : '',
@@ -878,6 +890,26 @@ async function saveSettings() {
   };
   await fetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
   toast('✅ टीवी और क्लिनिक सेटिंग्स सेव हो गईं!');
+}
+
+function openPrintPopup(url, title) {
+  const modal = document.getElementById('printModal');
+  if (!modal) {
+    window.open(url, '_blank');
+    return;
+  }
+  document.getElementById('printModalTitle').textContent = title || '🖨️ पर्चा प्रिंट प्रिव्यू (Prescription Print)';
+  const iframe = document.getElementById('printModalFrame');
+  iframe.src = url;
+  openModal('printModal');
+}
+
+function triggerPrintFrame() {
+  const iframe = document.getElementById('printModalFrame');
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  }
 }
 
 async function createBackup() {

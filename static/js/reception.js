@@ -216,13 +216,38 @@ function quickBook(pid, name, mobile) {
   document.getElementById('selectedPatientMobile').textContent = mobile;
   document.getElementById('selectedPatientCard').style.display = '';
   document.getElementById('bookApptBtn').disabled = false;
+  checkPrescriptionStatus(pid);
 }
 
 function clearSelectedPatient() {
   currentApptPatientId = null;
   document.getElementById('selectedPatientCard').style.display = 'none';
+  const badge = document.getElementById('apptFollowupBadge');
+  if (badge) badge.style.display = 'none';
+  if (document.getElementById('apptIsPriority')) document.getElementById('apptIsPriority').checked = false;
   document.getElementById('bookApptBtn').disabled = true;
   document.getElementById('apptSearch').value = '';
+}
+
+async function checkPrescriptionStatus(pid) {
+  const badgeEl = document.getElementById('apptFollowupBadge');
+  if (!badgeEl) return;
+  try {
+    const res = await fetch(`/api/patients/${pid}/prescription-status`).then(r => r.json());
+    badgeEl.style.display = 'block';
+    if (res.is_free) {
+      badgeEl.style.background = '#dcfce7';
+      badgeEl.style.color = '#15803d';
+      badgeEl.style.border = '1px solid #86efac';
+    } else {
+      badgeEl.style.background = '#fee2e2';
+      badgeEl.style.color = '#b91c1c';
+      badgeEl.style.border = '1px solid #fca5a5';
+    }
+    badgeEl.innerHTML = res.badge;
+  } catch (e) {
+    badgeEl.style.display = 'none';
+  }
 }
 
 // ─── PATIENT MODAL ───
@@ -293,25 +318,39 @@ function selectApptPatient(pid, name, mobile) {
   document.getElementById('bookApptBtn').disabled = false;
   document.getElementById('apptSearch').value = '';
   document.getElementById('apptSearchResults').style.display = 'none';
+  checkPrescriptionStatus(pid);
 }
 
 async function bookAppointment() {
   if (!currentApptPatientId) { toast('पहले मरीज चुनें', 'error'); return; }
   const date = document.getElementById('apptDate').value;
   const notes = document.getElementById('apptNotes').value;
+  const is_priority = document.getElementById('apptIsPriority') ? document.getElementById('apptIsPriority').checked : false;
   const resp = await fetch('/api/appointments', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ patient_id: currentApptPatientId, date, notes })
+    body: JSON.stringify({ patient_id: currentApptPatientId, date, notes, is_priority })
   });
   const result = await resp.json();
   if (result.success) {
-    toast(`✅ टोकन नंबर: ${result.token} — अपॉइंटमेंट बुक हो गया!`);
+    toast(`✅ टोकन नंबर: ${result.token} ${is_priority ? '(⭐ VIP प्राथमिकता)' : ''} — अपॉइंटमेंट बुक हो गया!`);
     clearSelectedPatient();
     document.getElementById('apptNotes').value = '';
     loadQueue();
   } else {
     toast(result.message || 'त्रुटि', 'error');
+  }
+}
+
+async function togglePriority(aid) {
+  try {
+    const res = await fetch(`/api/appointments/${aid}/toggle-priority`, { method: 'POST' }).then(r => r.json());
+    if (res.success) {
+      toast(res.is_priority ? `⭐ टोकन ${res.token} को प्राथमिकता (VIP) दी गई!` : `टोकन ${res.token} सामान्य कतार में वापस`);
+      loadQueue();
+    }
+  } catch (e) {
+    toast('प्राथमिकता बदलने में त्रुटि', 'error');
   }
 }
 
@@ -329,15 +368,19 @@ async function loadQueue() {
   }
   if (el) {
     el.innerHTML = queue.map(a => `
-      <div class="queue-item">
-        <div class="token-badge">${a.token}</div>
+      <div class="queue-item" style="${a.is_priority ? 'border-left: 4px solid #f59e0b; background:#fffbeb;' : ''}">
+        <div class="token-badge" style="${a.is_priority ? 'background:#d97706;color:#fff;' : ''}">${a.token}</div>
         <div class="queue-info">
-          <div class="queue-name">${a.name}</div>
+          <div class="queue-name">
+            ${a.name}
+            ${a.is_priority ? '<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;font-size:0.75rem;margin-left:6px;">⭐ VIP प्राथमिकता</span>' : ''}
+          </div>
           <div class="queue-meta">${a.mobile} &bull; ${a.age || '-'} वर्ष &bull; ${a.gender || '-'}</div>
           ${a.notes ? `<div class="queue-meta">📝 ${a.notes}</div>` : ''}
         </div>
         <span class="badge badge-${a.status.replace('_','-')}">${statusLabel(a.status)}</span>
         <div class="queue-actions">
+          <button class="btn btn-sm ${a.is_priority ? 'btn-warning' : 'btn-outline'}" onclick="togglePriority(${a.id})" title="${a.is_priority ? 'VIP प्राथमिकता हटाएं' : 'VIP प्राथमिकता दें (कतार में आगे रखें)'}">⭐</button>
           <button class="btn btn-sm btn-outline" onclick="cancelAppt(${a.id})" title="रद्द करें" ${a.status==='completed'||a.status==='cancelled'?'disabled':''}>❌</button>
           <button class="btn btn-sm btn-primary" onclick="quickBill(${a.patient_id}, '${a.name}', ${a.id})" title="बिल बनाएं">💳</button>
         </div>
@@ -345,12 +388,16 @@ async function loadQueue() {
   }
   if (tbody) {
     tbody.innerHTML = queue.map(a => `
-      <tr>
-        <td><div class="token-badge">${a.token}</div></td>
-        <td><strong>${a.name}</strong></td>
+      <tr style="${a.is_priority ? 'background:#fffbeb;' : ''}">
+        <td><div class="token-badge" style="${a.is_priority ? 'background:#d97706;color:#fff;' : ''}">${a.token}</div></td>
+        <td>
+          <strong>${a.name}</strong>
+          ${a.is_priority ? '<span style="color:#d97706;font-size:0.8rem;margin-left:4px;font-weight:700;">⭐ VIP</span>' : ''}
+        </td>
         <td>${a.mobile}</td>
         <td><span class="badge badge-${a.status.replace('_','-')}">${statusLabel(a.status)}</span></td>
         <td>
+          <button class="btn btn-sm ${a.is_priority ? 'btn-warning' : 'btn-outline'}" onclick="togglePriority(${a.id})" title="VIP प्राथमिकता बदलें">⭐</button>
           <button class="btn btn-sm btn-danger" onclick="cancelAppt(${a.id})" ${a.status==='completed'||a.status==='cancelled'?'disabled':''}>रद्द</button>
           <button class="btn btn-sm btn-primary" onclick="quickBill(${a.patient_id}, '${a.name}', ${a.id})">💳 बिल</button>
         </td>
@@ -406,11 +453,7 @@ function selectBillPatient(pid, name, mobile) {
   document.getElementById('billSearchResults').style.display = 'none';
   document.getElementById('createBillBtn').disabled = false;
   loadPatientBills(pid);
-  // Load default consultation fee from settings
-  fetch('/api/settings').then(r=>r.json()).then(s => {
-    if (s.consultation_fee) document.getElementById('billConsultFee').value = s.consultation_fee;
-    calcBill();
-  });
+  applyBillingPatientDefaults(pid);
 }
 
 function quickBill(pid, name, apptId) {
@@ -421,10 +464,45 @@ function quickBill(pid, name, apptId) {
   document.getElementById('billPatientInfo').style.display = '';
   document.getElementById('createBillBtn').disabled = false;
   loadPatientBills(pid);
-  fetch('/api/settings').then(r=>r.json()).then(s => {
-    if (s.consultation_fee) document.getElementById('billConsultFee').value = s.consultation_fee;
+  applyBillingPatientDefaults(pid);
+}
+
+async function applyBillingPatientDefaults(pid) {
+  try {
+    const [settings, rxStatus] = await Promise.all([
+      fetch('/api/settings').then(r => r.json()),
+      fetch(`/api/patients/${pid}/prescription-status`).then(r => r.json())
+    ]);
+
+    // Populate Cashier Dropdown if available
+    if (settings.billing_staff_list) {
+      const sel = document.getElementById('billCollectedBy');
+      if (sel) {
+        const staff = settings.billing_staff_list.split(',').map(s => s.trim()).filter(Boolean);
+        if (staff.length) {
+          const currentVal = sel.value;
+          sel.innerHTML = staff.map(st => `<option value="${st}">${st}</option>`).join('');
+          if (staff.includes(currentVal)) sel.value = currentVal;
+        }
+      }
+    }
+
+    // Follow-up 14-day validity check
+    const feeInput = document.getElementById('billConsultFee');
+    if (rxStatus.is_free) {
+      feeInput.value = 0;
+      toast(`🟢 ${rxStatus.badge}`, 'info');
+    } else {
+      feeInput.value = rxStatus.fee || settings.consultation_fee || 300;
+      if (rxStatus.has_previous) {
+        toast(`🔴 ${rxStatus.badge}`, 'warning');
+      }
+    }
     calcBill();
-  });
+  } catch (err) {
+    console.error('Billing defaults error:', err);
+    calcBill();
+  }
 }
 let currentApptForBill = null;
 
@@ -440,7 +518,7 @@ async function loadPatientBills(pid) {
       </div>
       <span class="badge badge-${b.status}">${b.status === 'paid' ? 'पेड' : b.status === 'partial' ? 'बकाया' : b.status === 'cancelled' ? 'रद्द' : 'रिफंड'}</span>
       <div class="d-flex gap-1 align-center">
-        <button class="btn btn-sm btn-outline" onclick="window.open('/print/bill/${b.id}','_blank')" title="प्रिंट">🖨️</button>
+        <button class="btn btn-sm btn-outline" onclick="openPrintPopup('/print/bill/${b.id}', 'बिल प्रिंट')" title="प्रिंट">🖨️</button>
         ${b.status !== 'cancelled' ? `<button class="btn btn-sm btn-danger" onclick="cancelBillPrompt(${b.id}, '${b.bill_number}')" title="रद्द करें (डॉक्टर पिन जरूरी)">❌</button>` : ''}
       </div>
     </div>`).join('');
@@ -502,6 +580,9 @@ async function createBill() {
   const ex = parseFloat(document.getElementById('billExtraCharge').value) || 0;
   const disc = parseFloat(document.getElementById('billDiscount').value) || 0;
   const paid = parseFloat(document.getElementById('billAmtPaid').value) || 0;
+  const collectedByEl = document.getElementById('billCollectedBy');
+  const collected_by = collectedByEl ? collectedByEl.value : 'देवेन्द्र (Devendra)';
+
   const data = {
     patient_id: currentBillPatientId,
     appointment_id: currentApptForBill,
@@ -510,7 +591,8 @@ async function createBill() {
     extra_charge_desc: document.getElementById('billExtraDesc').value,
     discount: disc,
     amount_paid: paid,
-    payment_mode: document.getElementById('billPayMode').value
+    payment_mode: document.getElementById('billPayMode').value,
+    collected_by: collected_by
   };
   const resp = await fetch('/api/bills', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
   const result = await resp.json();
@@ -521,7 +603,7 @@ async function createBill() {
       <div style="text-align:center;padding:20px;">
         <div style="font-size:2.5rem;margin-bottom:12px;">🧾</div>
         <div style="font-size:1.2rem;font-weight:700;color:var(--primary);">${result.bill_number}</div>
-        <div style="font-size:0.9rem;color:var(--text2);margin-top:8px;">बिल सफलतापूर्वक बना लिया गया</div>
+        <div style="font-size:0.9rem;color:var(--text2);margin-top:8px;">राशि प्राप्तकर्ता: <strong>${collected_by}</strong></div>
       </div>`;
     openModal('billSuccessModal');
     loadPatientBills(currentBillPatientId);
@@ -553,8 +635,28 @@ async function createBill() {
 }
 
 function printBill() {
-  if (currentBillId) window.open(`/print/bill/${currentBillId}`, '_blank');
+  if (currentBillId) openPrintPopup(`/print/bill/${currentBillId}`, 'बिल प्रिंट');
   closeModal('billSuccessModal');
+}
+
+function openPrintPopup(url, title) {
+  const modal = document.getElementById('printModal');
+  if (!modal) {
+    window.open(url, '_blank');
+    return;
+  }
+  document.getElementById('printModalTitle').textContent = title || '🖨️ प्रिंट प्रिव्यू (Print Preview)';
+  const iframe = document.getElementById('printModalFrame');
+  iframe.src = url;
+  openModal('printModal');
+}
+
+function triggerPrintFrame() {
+  const iframe = document.getElementById('printModalFrame');
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  }
 }
 
 // ─── REPORTS ───
